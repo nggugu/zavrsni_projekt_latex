@@ -1,0 +1,55 @@
+\documentclass[times, utf8, zavrsni, numeric]{fer}
+\usepackage{booktabs}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{minted}
+\usepackage{siunitx}
+\usepackage{textcomp}
+
+\setminted{tabsize=3,linenos,breaklines,breakanywhere,fontsize=\tiny}
+
+\graphicspath{{C:/Users/Nikola/Programming/CUBE_workspace/FERSAT_PDH/brzistart/slike/}}
+
+\begin{document}
+
+% TODO: Navedite broj rada.
+\thesisnumber{2021-72}
+
+% TODO: Navedite naslov rada.
+\title{Programska potpora za upravljanje kamerom na CubeSat nanosatelitu}
+
+% TODO: Navedite vaše ime i prezime.
+\author{Nikola Gudan}
+
+\maketitle
+
+% Ispis stranice s napomenom o umetanju izvornika rada. Uklonite naredbu \izvornik ako želite izbaciti tu stranicu.
+\izvornik
+
+% Dodavanje zahvale ili prazne stranice. Ako ne želite dodati zahvalu, naredbu ostavite radi prazne stranice.
+\zahvala{HVALA TI KARLA}
+
+\tableofcontents
+
+\include{uvod}
+\include{i2c}
+\include{zakljucak}
+
+\bibliography{literatura}
+\bibliographystyle{fer}
+
+\begin{sazetak}
+Sažetak na hrvatskom jeziku.
+
+\kljucnerijeci{Ključne riječi, odvojene zarezima.}
+\end{sazetak}
+
+% TODO: Navedite naslov na engleskom jeziku.
+\engtitle{Software for Camera Control on CubeSat Nanosatellite}
+\begin{abstract}
+Abstract.
+
+\keywords{Keywords.}
+\end{abstract}
+
+\end{document}
