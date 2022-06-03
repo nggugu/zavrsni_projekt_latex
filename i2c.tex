@@ -65,3 +65,71 @@ U svakom od navedenih slučajeva mikrokontroler A je generirao takt i prekidao
 prijenos. Upravljač uvijek generira takt na I\textsuperscript{2}C sabirnici kod
 prijenosa podataka. U ovom radu korišten je samo jedan mikrokontroler, odnosno
 upravljač, pa ćemo se dalje usredotočiti samo na taj slučaj.
+
+\subsection{Opis komunikacije i vremenski dijagram}
+I\textsuperscript{2}C komunikacija započinje sa \textit{start} simbolom i
+završava sa \textit{stop} simbolom. Komunikacijom se može čitati ili pisati
+ovisno o R\textbackslash W bitu u adresi. Struktura adresiranja kod 7-bitne
+adrese izgleda ovako:
+\begin{center}
+	\begin{tabular}{ | c | c | c | c | c | c | c | c | c | }
+		\hline
+		& \multicolumn{7}{|c|}{Adresno polje} & R\textbackslash W \\
+		\hline
+		Pozicija bita u bajtu & 7 & 6 & 5 & 4 & 3 & 2 & 1 & 0 \\
+		\hline
+		Značenje & MSB & \multicolumn{5}{|c|}{} & LSB & 1=READ, 0=WRITE \\
+		\hline
+	\end{tabular}
+\end{center}
+kao što se vidi, najmanje značajan bit označava želi li se nešto čitati ili
+pisati.
+
+Imajući na umu izgled adresnog bajta, vremenski dijagram tipčne
+I\textsuperscript{2}C komunikacije izgleda ovako:
+\begin{figure}[hp]
+	\centering
+	\includegraphics[width=\textwidth]{I2C_data_transfer.png}
+	\caption{Vremenski dijagram I\textsuperscript{2}C komunikacije}
+	\label{fig:i2c_timing_diagram}
+\end{figure}
+\begin{itemize}
+	\item Prijenos podataka se inicijalizira \textit{start} uvjetom (S) tako da
+	SDA linija prijeđe u nisku logičku razinu dok SCL linija ostaje u visokoj
+	logičkoj razini.
+	\item (Plavo područje) SCL prelazi u nisku logičku razinu i SDA postavlja
+	prvi podatkovni bit dok je SCL u niskoj logičkoj razini.
+	\item (Zeleno područje) Podaci se primaju dok SCL poraste za prvi bit
+	(B\textsubscript{1}). Kako bi podaci bili valjani, SDA se ne smije
+	promijeniti između rastućeg brida SCL-a i sljedećeg padajućeg brida.
+	\item Postupak se ponavlja, SDA se postavlja dok je SCL u niskoj razini, a
+	podaci se čitaju dok je SCL u visokoj razini (B\textsubscript{2} do
+	B\textsubscript{n}).
+	\item Nakon posljednjeg bita slijedi taktni impuls, tijekom kojeg SDA
+	prelazi u nisku razinu pripremajući se za \textit{stop} uvjet.
+	\item Signalizira se \textit{stop} uvjet kada SCL poraste, nakon čega
+	slijedi porast SDA-a.
+\end{itemize}
+\textit{Start} i \textit{stop} uvjete uvijek generira upravljač.
+
+Nakon svakog bajta prijamnik šalje odašiljaču ACK bit kojim se signalizira
+uspješno primanje podatka, odnosno NACK bit kojim se signalizira neuspješno
+primanje podatka. ACK i NACK bitovi se nazivaju signalom potvrde i definiraju
+sljedeći način: odašiljač otpušta SDA liniju tijekom potvrdnog takta kako bi
+prijamnik mogao spustiti SDA na nisku razinu na kojoj i ostaje tijekom visoke
+razine takta. Ako SDA ostaje u visokoj razini tijekom devete periode takta, to
+predstavlja NACK (engl. \textit{Not Acknowledge}) signal, a suprotan slučaj
+predstavlja ACK (engl. \textit{Acknowledge}) signal. Ako je došlo do NACK
+signala, upravljač može generirati \textit{stop} uvjet kako bi prekinuo prijenos
+ili može ponovno generirati \textit{start} uvjet kako bi započeo nov prijenos.
+
+Vremenski dijagram cijele komunikacije sa potvrdnim signalima prikazan je na
+sljedećoj slici:
+\begin{figure}[hp]
+	\centering
+	\includegraphics[width=\textwidth]{I2C_vremenski_dijagram.PNG}
+	\caption{Prijenos podataka na I\textsuperscript{2}C sabirnici}
+	\label{fig:i2c_timing_diagram_transaction}
+\end{figure}
+
+\section{Struktura I\textsuperscript{2}C periferije na STM32L471VGT6}
