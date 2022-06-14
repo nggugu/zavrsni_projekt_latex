@@ -1,47 +1,27 @@
 \chapter{I\textsuperscript{2}C sučelje mikrokontrolera STM32L471VGT6}
-Za konfiguraciju kamere Arducam 5MP Mini Plus  PDH računalo koristi
-I\textsuperscript{2}C komunikaciju. S obzirom na to da se za razvoj programske
-potpore PDH računala koriste \textit{Low-Layer} biblioteke, potrebno je
-razumijevanje načina rada I\textsuperscript{2}C periferije odabranog
-mikrokontrolera kako bi se ispravno implementirali upravljački programi. U
-nastavku slijedi općenit opis I\textsuperscript{2}C komunikacije kao i njena
-implementacija na STM32L471VGT6 mikrokontroleru.
+Za konfiguraciju kamere Arducam 5MP Mini Plus  PDH računalo koristi I\textsuperscript{2}C komunikaciju. S obzirom na to da se za razvoj programske potpore PDH računala koriste \textit{Low-Layer} biblioteke, potrebno je razumijevanje načina rada I\textsuperscript{2}C periferije odabranog mikrokontrolera kako bi se ispravno implementirali upravljački programi. U nastavku slijedi općenit opis I\textsuperscript{2}C komunikacije kao i njena implementacija na STM32L471VGT6 mikrokontroleru.
 
 \section{I\textsuperscript{2}C protokol}
-I\textsuperscript{2}C (\textit{Inter-Integrated Circuit}) je jednostavna
-dvosmjerna sinkrona serijska sabirnica razvijena od strane \textit{Philips
-Semiconductors} (sada \textit{NXP Semiconductors}) 1982. godine. Koristi dvije
-linije:
+I\textsuperscript{2}C (\textit{Inter-Integrated Circuit}) je jednostavna dvosmjerna sinkrona serijska sabirnica razvijena od strane \textit{Philips Semiconductors} (sada \textit{NXP Semiconductors}) 1982 \cite{i2c_wikipedia}. godine. Koristi dvije linije:
 \begin{itemize}
 	\item serijska podatkovna linija (SDA, \textit{Serial Data Line}),
 	\item serijska taktna linija (SCL, \textit{Serial Clock Line}),
 \end{itemize}
-obje linije su pritegnute na visoku logičku razinu preko \textit{pull-up}
-otpornika. Moguće brzine prijenosa su:
+obje linije su pritegnute na visoku logičku razinu preko \textit{pull-up} otpornika. Moguće brzine prijenosa su:
 \begin{itemize}
 	\item do 100 \si{kbit/s} u \textit{Standard-mode} načinu rada, 
 	\item do 400 \si{kbit/s} u \textit{Fast-mode} načinu rada,
 	\item do 1 \si{Mbit/s} u \textit{Fast-mode Plus} načinu rada,
 	\item do 3.4 \si{Mbit/s} u \textit{High-speed} načinu rada.
 \end{itemize}
-Navedene brzine se koriste kod dvosmjernog prijenosa, a moguća je i brzina do 5
-\si{Mbit/s} u jednosmjernom prijenosu. Više uređaja se može spojiti na jednu
-sabirnicu, a svaki uređaje je prepoznatljiv po svojoj jedinstvenoj adresi i
-može se ponašati kao prijamnik ili odašiljač, ovisno o funkciji uređaja.
-Protokol najčešće, a tako i u ovom slučaju, koristi 7-bitno adresiranje, a
-moguće je i korištenje 10-bitnog adresiranja. Uz prijamnike i odašiljače uređaj
-također može biti upravljač ili meta tijekom prijenosa podataka. Upravljač je
-uređaj koji inicijalizira prijenos podataka na sabirnici i generira signal
-takta kako bi omogućio prijenos. U tom trenutku, bilo koji uređaj koji je
-adresiran smatra se metom.
+Navedene brzine se koriste kod dvosmjernog prijenosa, a moguća je i brzina do 5 \si{Mbit/s} u jednosmjernom prijenosu. Više uređaja se može spojiti na jednu sabirnicu, a svaki uređaje je prepoznatljiv po svojoj jedinstvenoj adresi i može se ponašati kao prijamnik ili odašiljač, ovisno o funkciji uređaja \cite{i2c_manual}. Protokol najčešće, a tako i u ovom slučaju, koristi 7-bitno adresiranje, a moguće je i korištenje 10-bitnog adresiranja. Uz prijamnike i odašiljače uređaj također može biti upravljač ili meta tijekom prijenosa podataka. Upravljač je uređaj koji inicijalizira prijenos podataka na sabirnici i generira signal takta kako bi omogućio prijenos. U tom trenutku, bilo koji uređaj koji je adresiran smatra se metom.
 
-Na I\textsuperscript{2}C sabirnicu se također može spojiti više upravljača, a
-primjer jednog takvog spoja sa dva mikrokontrolera je dan na sljedećoj slici.
+Na I\textsuperscript{2}C sabirnicu se također može spojiti više upravljača, a primjer jednog takvog spoja sa dva mikrokontrolera je dan na sljedećoj slici.
 \begin{figure}[hp]
 	\centering
 	\includegraphics[width=\textwidth]{i2c_primjer_1.PNG}
 	\caption{Primjer I\textsuperscript{2}C sabirnice sa spojena dva
-	mikrokontrolera}
+	mikrokontrolera \cite{i2c_manual}}
 	\label{fig:i2c_primjer_1}
 \end{figure}
 Prijenos podataka bi možda mogao izgledati ovako:
@@ -61,36 +41,33 @@ Prijenos podataka bi možda mogao izgledati ovako:
 		\item mikroknotroler A prekida prijenos.
 	\end{itemize}
 \end{enumerate}
-U svakom od navedenih slučajeva mikrokontroler A je generirao takt i prekidao
-prijenos. Upravljač uvijek generira takt na I\textsuperscript{2}C sabirnici kod
-prijenosa podataka. U ovom radu korišten je samo jedan mikrokontroler, odnosno
-upravljač, pa ćemo se dalje usredotočiti samo na taj slučaj.
+U svakom od navedenih slučajeva mikrokontroler A je generirao takt i prekidao prijenos. Upravljač uvijek generira takt na I\textsuperscript{2}C sabirnici kod prijenosa podataka. U ovom radu korišten je samo jedan mikrokontroler, odnosno upravljač, pa ćemo se dalje usredotočiti samo na taj slučaj.
 
 \subsection{Opis komunikacije i vremenski dijagram}
-I\textsuperscript{2}C komunikacija započinje sa \textit{start} simbolom i
-završava sa \textit{stop} simbolom. Komunikacijom se može čitati ili pisati
-ovisno o R\textbackslash W bitu u adresi. Struktura adresiranja kod 7-bitne
-adrese izgleda ovako:
+I\textsuperscript{2}C komunikacija započinje sa \textit{start} simbolom i završava sa \textit{stop} simbolom. Komunikacijom se može čitati ili pisati ovisno o R\textbackslash W bitu u adresi. Struktura adresiranja kod 7-bitne adrese izgleda ovako:
 \begin{center}
-	\begin{tabular}{ | c | c | c | c | c | c | c | c | c | }
-		\hline
-		& \multicolumn{7}{|c|}{Adresno polje} & R\textbackslash W \\
-		\hline
-		Pozicija bita u bajtu & 7 & 6 & 5 & 4 & 3 & 2 & 1 & 0 \\
-		\hline
-		Značenje & MSB & \multicolumn{5}{|c|}{} & LSB & 1=READ, 0=WRITE \\
-		\hline
-	\end{tabular}
+	\begin{table}
+		\begin{tabular}{ | c | c | c | c | c | c | c | c | c | }
+			\hline
+			& \multicolumn{7}{|c|}{Adresno polje} & R\textbackslash W \\
+			\hline
+			Pozicija bita u bajtu & 7 & 6 & 5 & 4 & 3 & 2 & 1 & 0 \\
+			\hline
+			Značenje & MSB & \multicolumn{5}{|c|}{} & LSB & 1=READ, 0=WRITE \\
+			\hline
+		\end{tabular}
+		\caption{Struktura adresiranja kod 7-bitne adrese \cite{i2c_wikipedia}}
+	\end{table}
 \end{center}
-kao što se vidi, najmanje značajan bit označava želi li se nešto čitati ili
-pisati.
+kao što se vidi, najmanje značajan bit označava želi li se nešto čitati ili pisati.
 
 Imajući na umu izgled adresnog bajta, vremenski dijagram tipčne
 I\textsuperscript{2}C komunikacije izgleda ovako:
 \begin{figure}[hp]
 	\centering
 	\includegraphics[width=\textwidth]{I2C_data_transfer.png}
-	\caption{Vremenski dijagram I\textsuperscript{2}C komunikacije}
+	\caption{Vremenski dijagram I\textsuperscript{2}C komunikacije
+	\cite{i2c_wikipedia}}
 	\label{fig:i2c_timing_diagram}
 \end{figure}
 \begin{itemize}
@@ -112,24 +89,39 @@ I\textsuperscript{2}C komunikacije izgleda ovako:
 \end{itemize}
 \textit{Start} i \textit{stop} uvjete uvijek generira upravljač.
 
-Nakon svakog bajta prijamnik šalje odašiljaču ACK bit kojim se signalizira
-uspješno primanje podatka, odnosno NACK bit kojim se signalizira neuspješno
-primanje podatka. ACK i NACK bitovi se nazivaju signalom potvrde i definiraju
-sljedeći način: odašiljač otpušta SDA liniju tijekom potvrdnog takta kako bi
-prijamnik mogao spustiti SDA na nisku razinu na kojoj i ostaje tijekom visoke
-razine takta. Ako SDA ostaje u visokoj razini tijekom devete periode takta, to
-predstavlja NACK (engl. \textit{Not Acknowledge}) signal, a suprotan slučaj
-predstavlja ACK (engl. \textit{Acknowledge}) signal. Ako je došlo do NACK
-signala, upravljač može generirati \textit{stop} uvjet kako bi prekinuo prijenos
-ili može ponovno generirati \textit{start} uvjet kako bi započeo nov prijenos.
+Nakon svakog bajta prijamnik šalje odašiljaču ACK bit kojim se signalizira uspješno primanje podatka, odnosno NACK bit kojim se signalizira neuspješno primanje podatka. ACK i NACK bitovi se nazivaju signalom potvrde i definiraju sljedeći način: odašiljač otpušta SDA liniju tijekom potvrdnog takta kako bi prijamnik mogao spustiti SDA na nisku razinu na kojoj i ostaje tijekom visoke razine takta. Ako SDA ostaje u visokoj razini tijekom devete periode takta, to predstavlja NACK (engl. \textit{Not Acknowledge}) signal, a suprotan slučaj predstavlja ACK (engl. \textit{Acknowledge}) signal. Ako je došlo do NACK signala, upravljač može generirati \textit{stop} uvjet kako bi prekinuo prijenos ili može ponovno generirati \textit{start} uvjet kako bi započeo nov prijenos.
 
-Vremenski dijagram cijele komunikacije sa potvrdnim signalima prikazan je na
-sljedećoj slici:
+Vremenski dijagram cijele komunikacije sa potvrdnim signalima prikazan je na sljedećoj slici:
 \begin{figure}[hp]
 	\centering
 	\includegraphics[width=\textwidth]{I2C_vremenski_dijagram.PNG}
-	\caption{Prijenos podataka na I\textsuperscript{2}C sabirnici}
+	\caption{Prijenos podataka na I\textsuperscript{2}C sabirnici
+	\cite{i2c_manual}}
 	\label{fig:i2c_timing_diagram_transaction}
 \end{figure}
 
-\section{Struktura I\textsuperscript{2}C periferije na STM32L471VGT6}
+\section{Razlika I\textsuperscript{2}C periferije na STM32L471VGT6 i \newline STM32F407VGT6 mikrokontrolerima}
+
+Tijekom prijenosa koda sa starog mikrokontrolera na novi, primjećeno je da postoji razlika između struktura I\textsuperscript{2}C periferija. Točnije, postoji razlika između registarskih mapa na dvama periferijama.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{l471_i2c_register_map_1.png}
+	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32L471VGT6
+	mikrokontrolera \cite{l471_manual}}
+	\label{fig:l471_i2c_register_map_1}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{l471_i2c_register_map_2.png}
+	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32L471VGT6
+	mikrokontrolera - nastavak \cite{l471_manual}}
+	\label{fig:l471_i2c_register_map_1407_i2c_diagram}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{f407_i2c_register_map.png}
+	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32F407VGT6
+	mikrokontrolera\cite{f407_manual}}
+	\label{fig:f407_i2c_diagram}
+\end{figure}
+Vidljiva je razlika između količine registara, raspodjele i značenja njihovih bitova, kao i njihovih imena, što implicira različite funkcionalnosti pojedinih registara. Tako, npr. I\textsuperscript{2}C periferija kod STM32F407VGT6 sadržava 2 status registra: I2C\_SR1 i I2C\_SR2, dok kod STM32L471VGT6 postoji samo jedan status registar I2C\_ISR. Ta razlika je bitna iz razloga što se tijekom prijenosa podataka na I\textsuperscript{2}C sabirnici trebaju provjeravati razne zastavice koje se mijenjaju tijekom komunikacije, kao što je npr. zastavica za prazni odašiljački registar (STM32F407VGT6: registar I2C\_SR1 bit 7, STM32L471VGT6: bit 0), zastavica za puni prijamnički registar (STM32F407VGT6: registar I2C\_SR1, bit 6, STM32L471VGT6: bit 2), zastavica za završetak prijenosa (STM32F407VGT6: ne postoji, STM32L471VGT6: bit 6) itd. Vidljivo je također da kod STM32L471VGT6 ne postoji zastavica ADDR, koja inače kod STM32F407VGT6 signalizira uspješan primitak adrese uređaja mete. Razlog tome je taj što STM32L471VGT6 ima poseban registar za pohranu adrese uređaja mete, pa kada mikrokontroler pošalje \textit{start} uvjet on automatski nakon završetka \textit{start} uvjeta pošalje i adresu uređaja mete 
