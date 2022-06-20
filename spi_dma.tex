@@ -1,1 +1,3 @@
 \chapter{SPI sučelje i DMA prijenos}
+
+SPI protokol se koristi za prijenos podataka između \textit{flash} memorije i mikrokontrolera, odnosno međuspremnika kamere. Kako bi se oslobodili resursi na mikrokontroleru, za prijenos podataka između kamere i \textit{flash} memorije se, u kombinaciji s SPI protokolom, koristi i DMA prijenos. S obzirom da se koriste \textit{Low-Layer} biblioteke, potrebno je razumijeti način rada SPI i DMA periferija mikrokontrolera. U ovom poglavlju biti će opisan SPI protokol i DMA prijenos i biti će istaknute razlike i problemi kod prilagođavanja programske podrške na STM32L471VGT6 mikrokontroler.
