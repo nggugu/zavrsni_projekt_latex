@@ -1,10 +1,10 @@
 \chapter{SPI sučelje i DMA prijenos}
 
-SPI protokol se koristi za prijenos podataka između \textit{flash} memorije i mikrokontrolera, odnosno međuspremnika kamere. Kako bi se oslobodili resursi na mikrokontroleru, za prijenos podataka između kamere i \textit{flash} memorije se, u kombinaciji s SPI protokolom, koristi i DMA prijenos. S obzirom da se koriste \textit{Low-Layer} biblioteke, potrebno je razumijeti način rada SPI i DMA periferija mikrokontrolera. U ovom poglavlju biti će opisan SPI protokol i DMA prijenos i biti će istaknute razlike i problemi kod prilagođavanja programske podrške na STM32L471VGT6 mikrokontroler.
+SPI (engl. \textit{Serial Peripheral Interface}) protokol se koristi za prijenos podataka između \textit{flash} memorije i mikrokontrolera, odnosno međuspremnika kamere. Kako bi se oslobodili resursi na mikrokontroleru, za prijenos podataka između kamere i \textit{flash} memorije se, u kombinaciji sa SPI protokolom, koristi i DMA (engl. \textit{Direct Memory Access}) prijenos. S obzirom na to da se koriste \textit{Low-Layer} biblioteke, potrebno je razumjeti način rada SPI i DMA periferija mikrokontrolera. U ovom poglavlju bit će opisan SPI protokol i DMA prijenos i bit će istaknute razlike i problemi kod prilagođavanja programske podrške za STM32L471VGT6 mikrokontroler.
 
 \section{SPI protokol}
 
-SPI (engl. \textit{Serial Peripheral Interface} je sinkrono serijsko komunikacijsko sučelje koje se koristi za komunikaciju na kratkim udaljenostima, pretežito u ugradbenim računalnim sustavima \cite{spi_wikipedia}. 
+SPI je sinkrono serijsko komunikacijsko sučelje koje se koristi za komunikaciju na kratkim udaljenostima, pretežito u ugradbenim računalnim sustavima \cite{spi_wikipedia}. 
 
 SPI uređaji komuniciraju u \textit{full-duplex} načinu rada koristeći \textit{master-slave} arhitekturu, obično sa jednim \textit{master} uređajem. \textit{Master} (upravljač) uređaj proizvodi okvir za čitanje i pisanje. Više \textit{slave} uređaja može biti spojeno na jedan upravljač tako da se aktivira određeni \textit{chip select} signal za pojedini uređaj.
 
@@ -24,7 +24,7 @@ MOSI na \textit{master} uređaju se spaja na MOSI na \textit{slave} uređaju, do
 	\caption{Spoj tri \textit{slave} uređaja na jedan \textit{master} uređaj u konfiguraciji neovisnog \textit{slave} uređaja. Vidljivo je da \textit{master} uređaj ima tri SS priključka, a svaki odgovara jednom \textit{slave} uređaju, dok se SCLK, MOSI i MISO linije međusobno dijele između \textit{slave} uređaja \cite{spi_wikipedia}}
 	\label{fig:spi_three_slaves}
 \end{figure}
-Moguće je još spojiti uređaje u kofiguraciju ulančavanog \textit{slave} uređaja. U toj konfiguraciji \textit{slave} uređaji dijele isi CS/SS, a ulančavanjem preko MISO/MOSI linija podaci se prenose prema načelu posmačnog registra, koji je objašnjen u sljedećoj sekciji. Prikaz spajanja tri \textit{slave} uređaja se nalazi na slici \ref{fig:SPI_three_slaves_daisy_chained}
+Moguće je još spojiti uređaje u konfiguraciju ulančavanog \textit{slave} uređaja. U toj konfiguraciji \textit{slave} uređaji dijele isti CS/SS, a ulančavanjem preko MISO/MOSI linija podaci se prenose prema načelu posmačnog registra, koji je objašnjen u sljedećem potpoglavlju. Prikaz spajanja tri \textit{slave} uređaja se nalazi na slici \ref{fig:SPI_three_slaves_daisy_chained}.
 \begin{figure}[H]
 	\centering
 	\includegraphics[height=7 cm]{SPI_three_slaves_daisy_chained.svg.png}
@@ -34,13 +34,13 @@ Moguće je još spojiti uređaje u kofiguraciju ulančavanog \textit{slave} ure�
 
 \subsection{Način rada}
 
-SPI sabirnica radi sa jednim \textit{master} uređajem i jednim ili više \textit{slave} uređaja. Ako se koristi jedan \textit{slave} uređaj, onda CS stezaljka može biti cijelo vrijeme postavljena u niskom logičkom stanju, ako \textit{slave} uređaj to dopušta. Neki \textit{slave} uređaji zahtijevaju padajući brid CS signala kako bi započeča komunikacija. Ako se koristi više \textit{slave} uređaja potreban je zaseban CS signal \textit{master} uređaja za svaki \textit{slave} uređaj.
+SPI sabirnica radi s jednim \textit{master} uređajem i jednim ili više \textit{slave} uređaja. Ako se koristi jedan \textit{slave} uređaj, onda CS signal može biti postavljen u nisku logičku razinu, ako \textit{slave} uređaj to dopušta. Neki \textit{slave} uređaji zahtijevaju padajući brid CS signala kako bi započela komunikacija. Ako se koristi više \textit{slave} uređaja potreban je zaseban CS signal \textit{master} uređaja za svaki \textit{slave} uređaj.
 
 \subsubsection{Prijenos podataka}
 
-Za početak komunikacije \textit{master} uređaj konfigurira takt koristeći frekvenciju koju podržava \textit{slave} uređaj, obično do nekoliko \si{MHz}. \textit{Master} uređaj zatim odabire \textit{slave} uređaj postavljanjem CS linije u nisko logičko stanje. Ako je potreban period čekanja, npr. za ADC konverziju, \textit{master} uređaj mora pričekati minimalno taj period vremena prije puštanja takta.
+Za početak komunikacije \textit{master} uređaj konfigurira takt koristeći frekvenciju koju podržava \textit{slave} uređaj, obično do nekoliko MHz. \textit{Master} uređaj zatim odabire \textit{slave} uređaj postavljanjem CS linije u nisko logičko stanje. Ako je potreban period čekanja, npr. za AD (analogno-digitalnu) pretvorbu, \textit{master} uređaj mora pričekati minimalno taj period vremena prije puštanja takta.
 
-Tijekom svakog perioda takta obavlja se prijenos podataka u \textit{full-duplex} načinu prijenosa. To znači da \textit{master} uređaj pošalje jedan bit na MOSI liniju, kojega \textit{slave} uređaj pročita, dok u isto vrijeme \textit{slave} uređaj šalje jedan bit na MISO liniju, kojega \textit{master} uređaj pročita. Takva sekvenca se održava čak i kada se izvađa jednosmjeran prijenos podataka.
+Tijekom svakog perioda takta obavlja se prijenos podataka u \textit{full-duplex} načinu rada. To znači da \textit{master} uređaj pošalje jedan bit na MOSI liniju, koji \textit{slave} uređaj pročita, dok u isto vrijeme \textit{slave} uređaj šalje jedan bit na MISO liniju, koji \textit{master} uređaj pročita. Takva sekvenca se održava čak i kada se izvodi jednosmjerni prijenos podataka.
 
 Prijenosi podataka uključuju dva posmačna registra zadane veličine, npr. 8 bitova, jedan u \textit{master} i drugi u \textit{slave} uređaju. Registri su spojeni u topologiji virtualnog prstena (slika \ref{fig:spi_circular_transfer}).
 \begin{figure}[H]
@@ -49,9 +49,9 @@ Prijenosi podataka uključuju dva posmačna registra zadane veličine, npr. 8 bi
 	\caption{Tipičan spoj dvaju posmačna registra koji formiraju kružni međuspremnik \cite{spi_wikipedia}}
 	\label{fig:spi_circular_transfer}
 \end{figure}
-Podaci se obično pomiču na način da se prvo pomakne najznačajniji bit. Na brid takta, \textit{master} i \textit{slave} uređaj pomaknu bit i pošalju ga na prijenosnu liniju. Na sljedeći brid takta, na svakom prijamniku bit se uzorkuje sa prijenosne linije i postavlja se kao novi najmanje značajni bit u posmačnom registru. \textit{Master} i \textit{slave} uređaji u potpunosti razmjene podatke u registrima nakon što se svi bitovi u registrima prebace. Ako je potrebno razmjeniti još podataka, posmačni registri se ponovno napune te se postupak ponavlja, a prijenos se može obavljati za bilo koji broj perioda takta. Kada je prijenos dovršen, \textit{master} uređaj prestaje davati takt i obično isključi CS signal, odnosno postavi ga na visoku razinu.
+Podaci se obično pomiču tako da se prvo pomakne najznačajniji bit. Na brid takta, \textit{master} i \textit{slave} uređaj pomaknu bit i pošalju ga na prijenosnu liniju. Na sljedeći brid takta, na svakom prijamniku bit se uzorkuje s prijenosne linije i postavlja se kao novi najmanje značajni bit u posmačnom registru. \textit{Master} i \textit{slave} uređaji u potpunosti razmjene podatke u registrima nakon što se svi bitovi u registrima prebace. Ako je potrebno razmijeniti još podataka, posmačni registri se ponovno napune te se postupak ponavlja, a prijenos se može obavljati za bilo koji broj perioda takta. Kada je prijenos dovršen, \textit{master} uređaj prestaje davati takt i obično isključi CS signal, odnosno postavi ga na visoku razinu.
 
-Prijenos se obično obavlja u širinama podataka od 8 bitova, no moguć je i 16 bitni prijenos, ili čak 12 bitni prijenos, koji se koristi za DAC i ADC konvertere.
+Prijenos se obično obavlja u riječima širine 8 bitova, no moguća je i širina riječi od 12 bita, ili čak 12 bitova, koji se koristi za digitalno-analogne i analogno-digitalne pretvornike.
 
 \subsubsection{Polaritet takta i faza}
 
@@ -59,10 +59,10 @@ Osim što mora podesiti frekvenciju takta, \textit{master} uređaj mora isto tak
 \begin{figure}[H]
 	\centering
 	\includegraphics[height=7 cm]{SPI_timing_diagram2.svg.png}
-	\caption{Vremenski dijagram koji pokazuje polaritet takta i fazu. Crvene linije označuju vodeće bridove, a plave linije označuju prateće bridove.}
+	\caption{Vremenski dijagram koji pokazuje polaritet takta i fazu. Crvene linije označuju vodeće bridove, a plave linije označavaju prateće bridove.}
 	\label{fig:spi_timing_diagram}
 \end{figure}
-CPOL određuje polaritet kanala. Polaritet može biti invertiran sa jednostavnim inverterom.
+CPOL određuje polaritet kanala. Polaritet može biti invertiran jednostavnim inverterom.
 \begin{itemize}
 	\item Ako je CPOL = 0, onda takt miruje u niskom logičkom stanju, a svaki period se sastoji od impulsa visokog logičkog stanja. To znači da je vodeći brid rastući brid, a prateći brid padajući brid.
 	\item Ako je CPOL = 1, onda takt miruje u visokom logičkom stanju, a svaki period se sastoji od impulsa niskog logičkog stanja. To znači da je vodeći brid padajući brid, a prateći brid rastući brid.
@@ -74,13 +74,13 @@ CPHA određuje fazu podatkovnih bitova u odnosu na takt.
 \end{itemize}
 MOSI i MISO signali su obično stabilni za vrijeme pola perioda takta, sve do sljedeće promjene takta. SPI \textit{master} i \textit{slave} uređaji mogu uzorkovati podatke u bilo kojem vremenu unutar te polovice periode takta.
 
-Kombinacije različitih konfiguracija CPOL i CPHA bitova predstavljaju \textit{modove}. Konvnecija je da CPOL predstavlja viši bit, dok CPHA predstavlja niži bit. \textit{Modovi} kod ARM-ovih mikrokontrolera su prikazani u tablici \ref{Tab:spi_modes}
+Kombinacije različitih konfiguracija CPOL i CPHA bitova predstavljaju načine rada. Konvnecija je da CPOL predstavlja viši bit, dok CPHA predstavlja niži bit. Načini rada kod ARM-ovih mikrokontrolera su prikazani u tablici \ref{Tab:spi_modes}
 \begin{center}
 	\begin{table}[H]
 		\centering
 		\begin{tabular}{| c | c | c |}
 			\hline
-			SPI \textit{mod} & CPOL & CPHA \\
+			SPI način rada & CPOL & CPHA \\
 			\hline
 			0 & 0 & 0 \\
 			\hline
@@ -91,7 +91,9 @@ Kombinacije različitih konfiguracija CPOL i CPHA bitova predstavljaju \textit{m
 			3 & 1 & 1 \\
 			\hline
 		\end{tabular}
-		\caption{SPI \textit{Modovi} kod ARM-ovih mikrokontrolera \cite{spi_wikipedia}}
+		\caption{SPI načini rada kod ARM-ovih mikrokontrolera \cite{spi_wikipedia}}
 		\label{Tab:spi_modes}
 	\end{table}
 \end{center}
+
+\section{DMA prijenos}
