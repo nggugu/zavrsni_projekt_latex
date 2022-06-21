@@ -46,9 +46,10 @@ Prijenos podataka bi možda mogao izgledati ovako:
 U svakom od navedenih slučajeva mikrokontroler A je generirao takt i prekidao prijenos. Upravljač uvijek generira takt na I\textsuperscript{2}C sabirnici kod prijenosa podataka. U ovom radu korišten je samo jedan mikrokontroler, odnosno upravljač, pa ćemo se dalje usredotočiti samo na taj slučaj.
 
 \subsection{Opis komunikacije i vremenski dijagram}
-I\textsuperscript{2}C komunikacija započinje sa \textit{start} simbolom i završava sa \textit{stop} simbolom. Komunikacijom se može čitati ili pisati ovisno o R\textbackslash W bitu u adresi. Struktura adresiranja kod 7-bitne adrese izgleda ovako:
+I\textsuperscript{2}C komunikacija započinje sa \textit{start} simbolom i završava sa \textit{stop} simbolom. Komunikacijom se može čitati ili pisati ovisno o R\textbackslash W bitu u adresi. Struktura adresiranja kod 7-bitne adrese je prikazana u tablici \ref{Tab:i2c_seven_bit_adressing}.
 \begin{center}
-	\begin{table}
+	\begin{table}[H]
+		\centering
 		\begin{tabular}{ | c | c | c | c | c | c | c | c | c | }
 			\hline
 			& \multicolumn{7}{|c|}{Adresno polje} & R\textbackslash W \\
@@ -59,9 +60,10 @@ I\textsuperscript{2}C komunikacija započinje sa \textit{start} simbolom i zavr�
 			\hline
 		\end{tabular}
 		\caption{Struktura adresiranja kod 7-bitne adrese \cite{i2c_wikipedia}}
+		\label{Tab:i2c_seven_bit_adressing}
 	\end{table}
 \end{center}
-kao što se vidi, najmanje značajan bit označava želi li se nešto čitati ili pisati.
+Iz tablice je vidljivo da najmanje značajan bit označava želi li se nešto čitati ili pisati.
 
 Imajući na umu izgled adresnog bajta, vremenski dijagram tipčne I\textsuperscript{2}C komunikacije prikazan je na slici \ref{fig:i2c_timing_diagram}.
 \begin{figure}[hp]

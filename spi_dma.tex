@@ -17,12 +17,19 @@ SPI sabirnica se sastoji od četiri signala:
 	\item MISO: \textit{Master Input Slave Output} (izvor podataka iz \textit{slave} uređaja)
 	\item CS/SS: \textit{Chip/Slave Select} (aktivan nisko, signal iz \textit{master} uređaja, označava da se prenose podaci)
 \end{itemize}
-MOSI na \textit{master} uređaju se spaja na MOSI na \textit{slave} uređaju, dok se MISO na \textit{master} uređaju se spaja na MISO na \textit{slave} uređaju. CS/SS se koristi za pokretanje komunikacije između \textit{slave} i \textit{master} uređaja. Za svaki \textit{slave} uređaj postoji zaseban CS/SS priključak na \textit{master} uređaju. Primjer spajanja tri \textit{slave} uređaja na jedan \textit{master} uređaj prikazan je na slici \ref{fig:spi_three_slaves}.
+MOSI na \textit{master} uređaju se spaja na MOSI na \textit{slave} uređaju, dok se MISO na \textit{master} uređaju se spaja na MISO na \textit{slave} uređaju. CS/SS se koristi za pokretanje komunikacije između \textit{slave} i \textit{master} uređaja. Za svaki \textit{slave} uređaj postoji zaseban CS/SS priključak na \textit{master} uređaju. Takav način spajanja se naziva neovisni \textit{slave} uređaj. Primjer spajanja tri \textit{slave} uređaja na jedan \textit{master} uređaj u konfiguraciji neovisnog \textit{slave} uređaja prikazan je na slici \ref{fig:spi_three_slaves}.
 \begin{figure}[H]
 	\centering
 	\includegraphics[height=7 cm]{SPI_three_slaves.svg.png}
-	\caption{Spoj tri \textit{slave} uređaja na jedan \textit{master} uređaj. Vidljivo je da \textit{master} uređaj ima tri SS priključka, a svaki odgovara jednom \textit{slave} uređaju, dok se SCLK, MOSI i MISO linije međusobno dijele između \textit{slave} uređaja \cite{spi_wikipedia}}
+	\caption{Spoj tri \textit{slave} uređaja na jedan \textit{master} uređaj u konfiguraciji neovisnog \textit{slave} uređaja. Vidljivo je da \textit{master} uređaj ima tri SS priključka, a svaki odgovara jednom \textit{slave} uređaju, dok se SCLK, MOSI i MISO linije međusobno dijele između \textit{slave} uređaja \cite{spi_wikipedia}}
 	\label{fig:spi_three_slaves}
+\end{figure}
+Moguće je još spojiti uređaje u kofiguraciju ulančavanog \textit{slave} uređaja. U toj konfiguraciji \textit{slave} uređaji dijele isi CS/SS, a ulančavanjem preko MISO/MOSI linija podaci se prenose prema načelu posmačnog registra, koji je objašnjen u sljedećoj sekciji. Prikaz spajanja tri \textit{slave} uređaja se nalazi na slici \ref{fig:SPI_three_slaves_daisy_chained}
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=7 cm]{SPI_three_slaves_daisy_chained.svg.png}
+	\caption{Spoj tri \textit{slave} uređaja na jedan \textit{master} uređaj u konfiguraciji ulančavanog \textit{slave} uređaja \cite{spi_wikipedia}}
+	\label{fig:SPI_three_slaves_daisy_chained}
 \end{figure}
 
 \subsection{Način rada}
@@ -45,3 +52,46 @@ Prijenosi podataka uključuju dva posmačna registra zadane veličine, npr. 8 bi
 Podaci se obično pomiču na način da se prvo pomakne najznačajniji bit. Na brid takta, \textit{master} i \textit{slave} uređaj pomaknu bit i pošalju ga na prijenosnu liniju. Na sljedeći brid takta, na svakom prijamniku bit se uzorkuje sa prijenosne linije i postavlja se kao novi najmanje značajni bit u posmačnom registru. \textit{Master} i \textit{slave} uređaji u potpunosti razmjene podatke u registrima nakon što se svi bitovi u registrima prebace. Ako je potrebno razmjeniti još podataka, posmačni registri se ponovno napune te se postupak ponavlja, a prijenos se može obavljati za bilo koji broj perioda takta. Kada je prijenos dovršen, \textit{master} uređaj prestaje davati takt i obično isključi CS signal, odnosno postavi ga na visoku razinu.
 
 Prijenos se obično obavlja u širinama podataka od 8 bitova, no moguć je i 16 bitni prijenos, ili čak 12 bitni prijenos, koji se koristi za DAC i ADC konvertere.
+
+\subsubsection{Polaritet takta i faza}
+
+Osim što mora podesiti frekvenciju takta, \textit{master} uređaj mora isto tako podesiti polaritet takta (CPOL, engl. \textit{Clock Polarity}) i fazu (CPHA, engl. \textit{Clock Phase}) ovisno o podacima. Vremenski dijagram je prikazan na slici \ref{fig:spi_timing_diagram}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=7 cm]{SPI_timing_diagram2.svg.png}
+	\caption{Vremenski dijagram koji pokazuje polaritet takta i fazu. Crvene linije označuju vodeće bridove, a plave linije označuju prateće bridove.}
+	\label{fig:spi_timing_diagram}
+\end{figure}
+CPOL određuje polaritet kanala. Polaritet može biti invertiran sa jednostavnim inverterom.
+\begin{itemize}
+	\item Ako je CPOL = 0, onda takt miruje u niskom logičkom stanju, a svaki period se sastoji od impulsa visokog logičkog stanja. To znači da je vodeći brid rastući brid, a prateći brid padajući brid.
+	\item Ako je CPOL = 1, onda takt miruje u visokom logičkom stanju, a svaki period se sastoji od impulsa niskog logičkog stanja. To znači da je vodeći brid padajući brid, a prateći brid rastući brid.
+\end{itemize}
+CPHA određuje fazu podatkovnih bitova u odnosu na takt.
+\begin{itemize}
+	\item Ako je CPHA = 0, "izlazna" strana mijenja podatak na prateći brid prethodnog perioda takta, dok "ulazna" strana prihvaća podatak na (ili ubrzo nakon) vodeći brid perioda takta. Izlazna strana zadržava valjani podatak sve do pojave pratećeg brida trenutnog perioda takta.
+	\item Ako je CPHA = 1, "izlazna" strana mijenja podatak na vodeći brid trenutnog perioda takta, dok "ulazna" strana prihvaća podatak na (ili ubrzo nakon) pratećeg brida perioda takta. Izlazna strana zadržava valjani podatak do pojave vodećeg brida sljedećeg perioda takta. Na zadnji period, \textit{slave} uređaj zadržava valjani podatak na MISO liniji sve dok \textit{slave} uređaj ne bude deselektiran.
+\end{itemize}
+MOSI i MISO signali su obično stabilni za vrijeme pola perioda takta, sve do sljedeće promjene takta. SPI \textit{master} i \textit{slave} uređaji mogu uzorkovati podatke u bilo kojem vremenu unutar te polovice periode takta.
+
+Kombinacije različitih konfiguracija CPOL i CPHA bitova predstavljaju \textit{modove}. Konvnecija je da CPOL predstavlja viši bit, dok CPHA predstavlja niži bit. \textit{Modovi} kod ARM-ovih mikrokontrolera su prikazani u tablici \ref{Tab:spi_modes}
+\begin{center}
+	\begin{table}[H]
+		\centering
+		\begin{tabular}{| c | c | c |}
+			\hline
+			SPI \textit{mod} & CPOL & CPHA \\
+			\hline
+			0 & 0 & 0 \\
+			\hline
+			1 & 0 & 1 \\
+			\hline
+			2 & 1 & 0 \\
+			\hline
+			3 & 1 & 1 \\
+			\hline
+		\end{tabular}
+		\caption{SPI \textit{Modovi} kod ARM-ovih mikrokontrolera \cite{spi_wikipedia}}
+		\label{Tab:spi_modes}
+	\end{table}
+\end{center}
