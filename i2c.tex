@@ -91,26 +91,75 @@ Imajući na umu izgled adresnog bajta, vremenski dijagram tipčne I\textsuperscr
 
 \section{Razlika I\textsuperscript{2}C periferije na STM32L471VGT6 i \newline STM32F407VGT6 mikrokontrolerima}
 
-Tijekom prijenosa koda sa starog mikrokontrolera na novi, primjećeno je da postoji razlika između struktura I\textsuperscript{2}C periferija. Točnije, postoji razlika između registarskih mapa na dvama periferijama, koje su vidljive usporedbom slika \ref{fig:l471_i2c_register_map_1},  \ref{fig:l471_i2c_register_map_2} i \ref{fig:f407_i2c_diagram}.
+Tijekom prijenosa koda sa starog mikrokontrolera na novi, primjećeno je da postoji razlika između struktura I\textsuperscript{2}C periferija. Točnije, postoji razlika između registarskih mapa na dvama periferijama, koje su vidljive usporedbom tablica \ref{Tab:l471_i2c_register_map} i \ref{Tab:f407_i2c_register_map} (\textit{napomena}: u tablicama nisu prikazani svi registri, jer se neki registri niti ne koriste, ili se koriste samo tijekom konfiguracije periferija. Za puni prikaz tablica treba provijeriti dokumentacije mikrokontrolera \cite{f407_manual}, \citep{l471_manual}).
 
-\begin{figure}[H]
-	\centering
-	\includegraphics[width=\textwidth]{l471_i2c_register_map_1.png}
+\begin{table}[H]
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{Offset} & \textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		\multirow{2}{*}{0x0} & I2C\_CR1 & \multicolumn{8}{c|}{Res.} & \rot{PECEN} & \rot{ALERTEN} & \rot{SMBDEN} & \rot{SMBHEN} & \rot{GCEN} & \rot{WUPEN} & \rot{NOSTRETCH} & \rot{SBC} & \rot{RXDMAEN} & \rot{TXDMAEN} & \rot{Res.} & \rot{ANFOFF} & \multicolumn{4}{c|}{DNF[3:0]} & \rot{ERRIE} & \rot{TCIE} & \rot{STOPIE} & \rot{NACKIE} & \rot{ADDRIE} & \rot{RXIE} & \rot{TXIE} & \rot{PE} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x4} & I2C\_CR2 & \multicolumn{5}{c|}{Res.} & \rot{PECBYTE} & \rot{AUTOEND} & \rot{RELOAD} & \multicolumn{8}{c|}{NBYTES[7:0]} & \rot{NACK} & \rot{STOP} & \rot{START} & \rot{HEAD10R} & \rot{ADD10} & \rot{RD\_WRN} & \multicolumn{10}{c|}{SADD[9:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x18} & I2C\_ISR & \multicolumn{8}{c|}{Res.} & \multicolumn{7}{c|}{ADDCODE[6:0]} & \rot{DIR} & \rot{BUSY} & \rot{Res.} & \rot{ALERT} & \rot{TIMEOUT} & \rot{PECERR} & \rot{OVR} & \rot{ARLO} & \rot{BERR} & \rot{TCR} & \rot{TC} & \rot{STOPF} & \rot{NACKF} & \rot{ADDR} & \rot{RXNE} & \rot{TXIS} & \rot{TXE} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x1C} & I2C\_ICR & \multicolumn{18}{c|}{Res.} & \rot{ALERTCF} & \rot{TIMOUTCF} & \rot{PECCF} & \rot{OVRCF} & \rot{ARLOCF} & \rot{BERRCF} & \multicolumn{2}{c|}{Res.} & \rot{STOPCF} & \rot{NACKCF	} & \rot{ADDRCF} & \multicolumn{3}{c|}{Res.} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & & & 0 & 0 & 0 & & & \\
+		\hline
+		\multirow{2}{*}{0x24} & I2C\_RXDR & \multicolumn{24}{c|}{Res.} & \multicolumn{8}{c|}{RXDATA[7:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x28} & I2C\_TXDR & \multicolumn{24}{c|}{Res.} & \multicolumn{8}{c|}{TXDATA[7:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
 	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32L471VGT6 mikrokontrolera \cite{l471_manual}}
-	\label{fig:l471_i2c_register_map_1}
-\end{figure}
-\begin{figure}[H]
-	\centering
-	\includegraphics[width=\textwidth]{l471_i2c_register_map_2.png}
-	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32L471VGT6 mikrokontrolera - nastavak \cite{l471_manual}}
-	\label{fig:l471_i2c_register_map_2}
-\end{figure}
-\begin{figure}[H]
-	\centering
-	\includegraphics[width=\textwidth]{f407_i2c_register_map.png}
-	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32F407VGT6 mikrokontrolera\cite{f407_manual}}
-	\label{fig:f407_i2c_diagram}
-\end{figure}
+	\label{Tab:l471_i2c_register_map}
+\end{table}
+
+\begin{table}[H]
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{Offset} & \textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		\multirow{2}{*}{0x0} & I2C\_CR1 & \multicolumn{16}{c|}{Res.} & \rot{SWRST} & \rot{Res.} & \rot{ALERT} & \rot{PEC} & \rot{POS} & \rot{ACK} & \rot{STOP} & \rot{START} & \rot{NOSTRETCH} & \rot{ENGC} & \rot{ENPEC} & \rot{ENARP} & \rot{SMBTYPE} & \rot{Res.} & \rot{SMBUS} & \rot{PE} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x4} & I2C\_CR2 & \multicolumn{19}{c|}{Res.} & \rot{LAST} & \rot{DMAEN} & \rot{ITBUFEN} & \rot{ITEVTEN} & \rot{ITERREN} & \multicolumn{2}{c|}{Res.} & \multicolumn{6}{c|}{FREQ[5:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & & & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x10} & I2C\_DR & \multicolumn{24}{c|}{Res.} & \multicolumn{8}{c|}{DR[7:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x14} & I2C\_SR1 & \multicolumn{16}{c|}{Res.} & \rot{SMBALERT} & \rot{TIMEOUT} & \rot{Res.} & \rot{PECERR} & \rot{OVR} & \rot{AF} & \rot{ARLO} & \rot{BERR} & \rot{TxE} & \rot{RxNE} & \rot{Res.} & \rot{STOPF} & \rot{ADD10} & \rot{BTF} & \rot{ADDR} & \rot{SB} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x18} & I2C\_SR2 & \multicolumn{16}{c|}{Res.} & \multicolumn{8}{c|}{PEC[7:0]} & \rot{DUALF} & \rot{SMBHOST} & \rot{SMBDEFAUL} & \rot{GENCALL} & \rot{Res.} & \rot{TRA} & \rot{BUSY} & \rot{MSL} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
+	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32F407VGT6 mikrokontrolera \cite{f407_manual}}
+	\label{Tab:f407_i2c_register_map}
+\end{table}
 
 Vidljiva je razlika između količine registara, raspodjele i značenja njihovih bitova, kao i njihovih imena, što implicira različite funkcionalnosti pojedinih registara. Tako, npr. I\textsuperscript{2}C periferija kod STM32F407VGT6 sadržava 2 status registra: I2C\_SR1 i I2C\_SR2, dok kod STM32L471VGT6 postoji samo jedan status registar I2C\_ISR. Ta razlika je bitna zato što se tijekom prijenosa podataka na I\textsuperscript{2}C sabirnici trebaju provjeravati razne zastavice koje se mijenjaju tijekom komunikacije, kao što je npr. zastavica za prazni odašiljački registar (STM32F407VGT6: registar I2C\_SR1 bit 7, STM32L471VGT6: bit 0), zastavica za puni prijamnički registar (STM32F407VGT6: registar I2C\_SR1, bit 6, STM32L471VGT6: bit 2), zastavica za završetak prijenosa (STM32F407VGT6: ne postoji, STM32L471VGT6: bit 6) itd.
 
