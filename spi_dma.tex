@@ -1,6 +1,6 @@
 \chapter{SPI sučelje i DMA prijenos}
 
-SPI (engl. \textit{Serial Peripheral Interface}) protokol se koristi za prijenos podataka između \textit{flash} memorije i mikrokontrolera, odnosno međuspremnika kamere. Kako bi se oslobodili resursi na mikrokontroleru, za prijenos podataka između kamere i \textit{flash} memorije se, u kombinaciji sa SPI protokolom, koristi i DMA (engl. \textit{Direct Memory Access}) prijenos. S obzirom na to da se koriste \textit{Low-Layer} biblioteke, potrebno je razumjeti način rada SPI i DMA periferija mikrokontrolera. U ovom poglavlju bit će opisan SPI protokol i DMA prijenos i bit će istaknute razlike i problemi kod prilagođavanja programske podrške za STM32L471VGT6 mikrokontroler.
+SPI protokol se koristi za prijenos podataka između \textit{flash} memorije i mikrokontrolera, odnosno međuspremnika kamere. Kako bi se oslobodili resursi na mikrokontroleru, za prijenos podataka između kamere i \textit{flash} memorije se, u kombinaciji sa SPI protokolom, koristi i DMA prijenos. S obzirom na to da se koriste \textit{Low-Layer} biblioteke, potrebno je razumjeti način rada SPI i DMA periferija mikrokontrolera. U ovom poglavlju bit će opisan SPI protokol i DMA prijenos i bit će istaknute razlike i problemi kod prilagođavanja programske podrške za STM32L471VGT6 mikrokontroler.
 
 \section{SPI protokol}
 
@@ -96,4 +96,115 @@ Kombinacije različitih konfiguracija CPOL i CPHA bitova predstavljaju načine r
 	\end{table}
 \end{center}
 
+\section{Prijenos programske podrške sa STM32F407VGT6 mirokontrolera na STM32L471VGT6 mikrokontroler}
+
+Što se tiče programske podrške za SPI komunikaciju između mikrokontrolera, \textit{flash} memorije i kamere, nije došlo do nikakvih poteškoća kod prijenosa programske podrške s prethodno korištenog mikrokontrolera na trenutni. Razlike između SPI periferijskih sklopova STM32F407VGT6 i STM32L471VGT6 mikrokontrolera postoje, međutim, s obzirom na način koji se SPI protokol koristi u ovom projektu, te razlike su zanemarive i može se reći da SPI komunikacija na trenuračno korištenom mikrokontroleru funkcionira na isti način kao i na prethodno korištenom mikrokontroleru.
+
+Došlo je, međutim, do poteškoća kod prijenosa programske podrške za DMA prijenos, koje će biti objašnjene u sljedećem poglavlju.
+
 \section{DMA prijenos}
+
+DMA se koristi kako bi se omogućio prijenos podataka visokih brzina između periferijskih sklopova i memorije ili između jedne memorije i druge memorije \cite{f407_manual}. Podatci se brzo mogu prenijeti bez posredovanja procesora. Na taj se način oslobađaju resursi procesora kako bi se mogle druge operacije za vrijeme prijenosa.
+
+U ovom projektu DMA prijenos se koristi između međuspremnika kamere i radne memorije mikrokontrolera.
+
+\subsection{Razlike DMA periferije na STM32F407VGT6 i STM32L471VGT6 mikrokontrolerima}
+
+STM32F407VGT6 mikrokontroler ima dva DMA kontrolera. Blok dijagram jednog DMA kontrolera je prikazan na slici \ref{fig:f407_dma_block_diagram}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=10 cm]{f407_dma_block_diagram.png}
+	\caption{Blok dijagram DMA kontrolera na STM32F407VGT6 mikrokontroleru \cite{f407_manual}}
+	\label{fig:f407_dma_block_diagram}
+\end{figure}
+
+DMA kontroler obavlja izravan prijenos memorije; kao AHB \textit{master}, može u bilo kojem trenutku preuzeti kontrolu nad AHB sabirnicom i pokrenuti AHB transakcije. DMA kontroler može pokrenuti sljedeće transakcije:
+\begin{itemize}
+	\item prijenos sa periferije na memoriju,
+	\item prijenos sa memorije na periferiju,
+	\item prijenos sa memorije na memoriju.
+\end{itemize}
+S obzirom na to da se u ovom radu koriste prijenosi s periferije na memoriju i obrnuto, u daljnjem tekstu će se podrazumijevati samo ti slučajevi.
+
+DMA periferija ima dvije AHB \textit{master} sabirnice, jedna se koristi za pristup memoriji, a druga za pristup periferijama. AHB \textit{slave} vrata se koriste za programiranje DMA kontrolera.
+
+Pojedini kontroler ima 8 tokova (engl. \textit{stream}), te za svaki tok postoji 8 kanala (engl. \textit{channel}). Svaki tok je spojen na određeni sklopovski DMA kanal. Tokovi i kanali služe kako bi se ostvarila veza između ostalih periferija i DMA mikorkontrolera, tako da periferije mogu slati zahtjev za DMA prijenos. %Broj podataka koji se trebaju prenijeti (do 65535) je programabilan i povezan je sa širinom izvora periferije koja zahtijeva DMA prijenos. Registar koji sadržava broj podataka koji se trebaju prenijeti se dekrementira nakon svake transakcije.
+
+Svaki DMA prijenos se sastoji od tri operacije:
+\begin{itemize}
+	\item učitavanje sa periferijskog podatkovnog registra ili lokacije u memoriji, čije su adrese zapisane u DMA\_SxPAR ili DMA\_SxM0AR registru
+	\item spremanje podataka na periferijski podatkovni registar ili lokaciju u memoriji, čije su adrese zapisane u DMA\_SxPAR ili DMA\_SxM0AR registru
+	\item naknadno dekrementiranje DMA\_SxNDTR registra, koji sadržava broj podataka koji se još trebaju prenjeti
+\end{itemize}
+Spomenuti registri su prikazani u tablici \ref{Tab:f407_dma_register_map_1}. Kada periferija želi pristupiti DMA kontroleru, periferijski sklop šalje zahtjev DMA kontroleru. DMA kontroler poslužuje zahtjev ovisno o prioritetima kanala. Čim DMA kontroler pristupi periferiji, DMA kontroler periferiji šalje signal potvrde. Periferni uređaj ukida svoj zahtjev čim dobije potvrdni signal iz DMA kontrolera. Nakon što periferna jedinica ukine zahtjev, DMA kontroler ukida signal potvrde. Ako ima više zahtjeva, periferna jedinica može pokrenuti sljedeću transakciju.
+
+\begin{table}[H]
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		DMA\_SxPAR & \multicolumn{32}{c|}{PA[31:0]} \\
+		\hline
+		Reset value & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		DMA\_M0AR & \multicolumn{32}{c|}{M0A[31:0]} \\
+		\hline
+		Reset value & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		DMA\_SxNDTR & \multicolumn{16}{c|}{Res.} & \multicolumn{16}{c|}{NDT[15:0]}\\
+		\hline
+		Reset value & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
+	\caption{Registri DMA\_SxPAR, DMA\_SxM0AR i DMA\_SxNDTR kod STM32F407VGT6 mikrokontrolera. \textit{x} označava broj toka \cite{f407_manual}}
+	\label{Tab:f407_dma_register_map_1}
+\end{table}
+
+Svaki tok je povezan sa DMA zahtjevom, koji može biti odabran između 8 mogućih kanalnih zahtjeva. Odabir kanala određuju bitovi CHSEL[2:0] u DMA\_SxCR registru (tablica \ref{Tab:f407_dma_register_map_2}). Odabir kanala prikazan je na slici \ref{fig:f407_dma_channel_selection}.
+\begin{table}[H]
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		DMA\_SxPAR & \multicolumn{4}{c|}{Res.} & \multicolumn{3}{c|}{\rot{CHSEL[2:0]}} & \multicolumn{2}{c|}{\rot{MBURST[1:0]}} & \multicolumn{2}{c|}{\rot{PBURST[1:0]}} & \rot{Res.} & \rot{CT} & \rot{DBM} & \multicolumn{2}{c|}{\rot{PL[1:0]}} & \rot{PINCOS} & \multicolumn{2}{c|}{\rot{MSIZE[1:0]}} & \multicolumn{2}{c|}{\rot{PSIZE[1:0]}} & \rot{MINC} & \rot{PINC} & \rot{CIRC} & \multicolumn{2}{c|}{\rot{DIR[1:0]}} & \rot{PFCTRL} & \rot{TCIE} & \rot{HTIE} & \rot{TEIE} & \rot{DMEIE} & \rot{EN} \\
+		\hline
+		Reset value & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
+	\caption{Registar DMA\_SxCR kod STM32F407VGT6 mikrokontrolera \citep{f407_manual}}
+	\label{Tab:f407_dma_register_map_2}
+\end{table} 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{f407_dma_channel_selection.png}
+	\caption{Odabir kanala \citep{f407_manual}}
+	\label{fig:f407_dma_channel_selection}
+\end{figure}
+Proučavanjem dokumentacije mikrokontrolera, zaključeno je da kako bi se koristio SPI protokol s DMA prijenosom mora se koristiti kanal 0 i tokovi 3 (SPI2\_RX) i 4 (SPI2\_TX) \cite[str. 307]{f407_manual}. Odabrani tokovi se koriste zato što je kamera spojena na SPI2 periferiju mikrokontrolera.
+
+Blok dijagram DMA periferije na STM32L471VGT6 mikrokontroleru je prikazan na slici \ref{fig:l471_dma_block_diagram}. Vidljivo je da oba mikrokontrolera sadržavaju dvije DMA periferije. Za razliku od SMT32F407VGT6 mikrokontrolera, trenutačni mikrokontroler, STM32L471VGT6, nema dvije AHB \textit{master} sabirnice, već samo jednu AHB \textit{master} sabirnicu.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=10 cm]{l471_dma_block_diagram.png}
+	\caption{Blok dijagram DMA periferije na STM32L471VGT6 mikrokontroleru \cite{l471_manual}}
+	\label{fig:l471_dma_block_diagram}
+\end{figure}
+
+STM32L471VGT6 nema tokove kao vezu za zahtjevom prekida, već ima samo kanale, te se stoga veza između ostalih periferija i DMA kontrolera ostvaruje na drugačiji način, prikazan na slici \ref{fig:l471_dma_request_mapping}. Iz slike je vidljivo da se na ovom mikrokontroleru trebaju koristiti kanali 4 (SPI2\_RX) i 5 (SPI2\_TX).
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=10 cm]{l471_dma_request_mapping.png}
+	\caption{Mapiranje zahtjeva za DMA1 kontroler kod STM32L471VGT6 mikrokontrolera \cite[str. 338]{l471_manual}}
+	\label{fig:l471_dma_request_mapping}
+\end{figure}
+
+Još jedna razlika između DMA periferija dvaju mikrokontrolera se krije u prekidima koje DMA kontrolera i zastavicama za prekide. STM32F407VGT6 ima 5 različitih prekida: završetak prijenosa (TC, engl. \textit{Transfer Complete}), obavljena polovica prijenosa (HT, engl. \textit{Half Transfer}), greška u prijenosu (TE, engl. \textit{Transfer Error}), FIFO greška (FE, engl. \textit{FIFO Error}) i greška u direktnom načinu rada (DME, engl. \textit{Direct Mode Error}). STM32L471VGT6 ima 3 različita prekida: završetak prijenosa završetak prijenosa (TC), obavljena polovica prijenosa (HT), greška u prijenosu (TE). Kod STM32L471VGT6 postoji još globalni prekid (GI, engl. \textit{Global Interrupt}) koji se aktivira u svim slučajevima. Ako se, na primjer, želi DMA kontroler namjestiti da zahtijeva prekid kod završetka prijenosa, polovice prijenos i kod greške u prijenosu, to se može podesiti jednostavno aktiviranjem globalnih prekida. S obzirom na to STM32F407VGT6 sadržava više vrsta prekida, on sadržava i 2 prekidna registra, dok STM32L471VGT6 sadržava 1 prekidni registar.
+
+Što se tiče ostalih dijelova DMA periferija, mikrokontroleri funkcioniraju isto. Postoje, međutim, razlike u načinu konfiguracije DMA kontrolera, međutim, to nije predstavljalo problem, s obzirom na to da je konfiguracija prepuštena generatoru koda. Nazivi registara koji se koriste su također različiti između dva mikrokontrolera, iako su im funkcije iste. To također nije bio problem jer su se koristile definicije registara u programskoj podršci koju je pružao proizvođač mikrokontrolera, pa je bilo potrebno samo promijeniti nazive tih registara.
