@@ -1,0 +1,399 @@
+\chapter{Sučelja za komunikaciju}
+
+\section{I\textsuperscript{2}C sučelje}
+
+Za konfiguraciju kamere Arducam 5MP Mini Plus  PDH računalo koristi I\textsuperscript{2}C komunikaciju. U nastavku slijedi općeniti opis I\textsuperscript{2}C protokola kao i razlike između I\textsuperscript{2}C periferijski sklopova na prethodno korištenom (STM32F407VGT6) i trenutačnom (STM32L471VGT6) mikrokontroleru.
+
+\subsection{I\textsuperscript{2}C protokol}
+
+I\textsuperscript{2}C je jednostavna dvosmjerna sinkrona serijska sabirnica razvijena od strane \textit{Philips Semiconductors} (sada \textit{NXP Semiconductors}) 1982. godine \cite{i2c_wikipedia}. Koristi dvije linije:
+\begin{itemize}
+	\item serijska podatkovna linija (SDA, \textit{Serial Data Line}),
+	\item serijska taktna linija (SCL, \textit{Serial Clock Line}).
+\end{itemize}
+Obje linije su pritegnute na visoku logičku razinu preko \textit{pull-up} otpornika. Moguće brzine prijenosa su:
+\begin{itemize}
+	\item do 100 kbit/s u \textit{Standard-mode} načinu rada, 
+	\item do 400 kbit/s u \textit{Fast-mode} načinu rada,
+	\item do 1 Mbit/s u \textit{Fast-mode Plus} načinu rada,
+	\item do 3.4 Mbit/s u \textit{High-speed} načinu rada.
+\end{itemize}
+Navedene brzine se koriste kod dvosmjernog prijenosa, a moguća je i brzina do 5 Mbit/s u jednosmjernom prijenosu. Više uređaja se može spojiti na jednu sabirnicu, a svaki uređaj je prepoznatljiv po svojoj jedinstvenoj adresi i može se ponašati kao prijamnik ili odašiljač, ovisno o funkciji uređaja \cite{i2c_manual}. Protokol najčešće, a tako i u ovom slučaju, koristi 7-bitno adresiranje, a moguće je i korištenje 10-bitnog adresiranja. Osim konfiguracije prijamnika i odašiljača, uređaj također može biti \textit{master} uređaj ili \textit{slave} uređaj tijekom prijenosa podataka. \textit{Master} uređaj je uređaj koji inicijalizira prijenos podataka na sabirnici i generira signal takta kako bi omogućio prijenos. U tom trenutku, bilo koji uređaj koji je adresiran smatra se \textit{slave} uređajem.
+
+Na I\textsuperscript{2}C sabirnicu se također može spojiti više \textit{master} uređaja, a primjer jednog takvog spoja sa dva mikrokontrolera dan je na slici \ref{fig:i2c_primjer_1}.
+\begin{figure}[hp]
+	\centering
+	\includegraphics[width=\textwidth]{i2c_primjer_1.PNG}
+	\caption{Primjer I\textsuperscript{2}C sabirnice sa spojena dva
+	mikrokontrolera \cite{i2c_manual}}
+	\label{fig:i2c_primjer_1}
+\end{figure}
+Prijenos podataka bi možda mogao izgledati ovako:
+\begin{enumerate}
+	\item Mikrokontroler A želi poslati podatke mikrokontroleru B:
+	\begin{itemize}
+		\item mikrokontroler A (\textit{master} uređaj) adresira mikrokontroler B (\textit{slave} uređaj)
+		\item mikrokontroler A (\textit{master}-odašiljač) šalje podatke mikrokontroleru B (\textit{slave} uređaj-prijamnik)
+		\item mikrokontroler A prekida prijenos
+	\end{itemize}
+	\item Mikrokontroler A želi primiti podatke sa mikrokontrolera B:
+		\begin{itemize}
+		\item mikrokontroler A (\textit{master} uređaj) adresira mikrokontroler B (\textit{slave})
+		\item mikrokontroler A (\textit{master}-prijamnik) prima podtke sa mikrokontrolera B (\textit{slave}-odašiljač)
+		\item mikroknotroler A prekida prijenos.
+	\end{itemize}
+\end{enumerate}
+U svakom od navedenih slučajeva mikrokontroler A je generirao takt i prekidao prijenos. Kod prijenosa podataka na I\textsuperscript{2}C sabirnici, \textit{master} uređaj uvijek generira signal takta. U ovom radu korišten je samo jedan mikrokontroler, odnosno \textit{master} uređaj, pa će se u daljnjem tekstu podrazumijevati samo taj slučaj.
+
+\subsubsection{Opis komunikacije i vremenski dijagram}
+I\textsuperscript{2}C komunikacija započinje sa \textit{start} simbolom i završava sa \textit{stop} simbolom. Komunikacijom se može čitati ili pisati ovisno o R/W bitu u adresi. Struktura adresiranja kod 7-bitne adrese je prikazana u tablici \ref{Tab:i2c_seven_bit_adressing}.
+\begin{center}
+	\begin{table}[H]
+		\centering
+		\caption{Struktura adresiranja kod 7-bitne adrese \cite{i2c_wikipedia}}
+		\begin{tabular}{ | c | c | c | c | c | c | c | c | c | }
+			\hline
+			& \multicolumn{7}{|c|}{Adresno polje} & R\textbackslash W \\
+			\hline
+			Pozicija bita u bajtu & 7 & 6 & 5 & 4 & 3 & 2 & 1 & 0 \\
+			\hline
+			Značenje & MSB & \multicolumn{5}{|c|}{} & LSB & 1=READ, 0=WRITE \\
+			\hline
+		\end{tabular}
+		\label{Tab:i2c_seven_bit_adressing}
+	\end{table}
+\end{center}
+Iz tablice je vidljivo da najmanje značajan bit označava želi li se podatak čitati ili pisati.
+
+Imajući na umu izgled adresnog bajta, vremenski dijagram tipčne I\textsuperscript{2}C komunikacije prikazan je na slici \ref{fig:i2c_timing_diagram}.
+\begin{figure}[hp]
+	\centering
+	\includegraphics[width=\textwidth]{I2C_data_transfer.png}
+	\caption{Vremenski dijagram I\textsuperscript{2}C komunikacije
+	\cite{i2c_wikipedia}}
+	\label{fig:i2c_timing_diagram}
+\end{figure}
+\begin{itemize}
+	\item Prijenos podataka se inicijalizira \textit{start} uvjetom (S) tako da SDA linija prijeđe u nisku logičku razinu dok SCL linija ostaje u visokoj logičkoj razini.
+	\item (Plavo područje) SCL prelazi u nisku logičku razinu i SDA postavlja prvi podatkovni bit dok je SCL u niskoj logičkoj razini.
+	\item (Zeleno područje) Podaci se primaju dok SCL poraste za prvi bit (B\textsubscript{1}). Kako bi podaci bili valjani, SDA se ne smije promijeniti između rastućeg brida SCL-a i sljedećeg padajućeg brida.
+	\item Postupak se ponavlja, SDA se postavlja dok je SCL u niskoj razini, a podaci se čitaju dok je SCL u visokoj razini (B\textsubscript{2} do B\textsubscript{n}).
+	\item Nakon posljednjeg bita slijedi taktni impuls, tijekom kojeg SDA prelazi u nisku razinu pripremajući se za \textit{stop} uvjet.
+	\item Signalizira se \textit{stop} uvjet kada SCL prijeđe u visoku logički razinu, nakon čega slijedi prelazak u visoku logičku razinu SDA signala.
+	\item (Plavo područje) SCL prelazi u nisku logičku razinu i SDA postavlja
+\end{itemize}
+\textit{Start} i \textit{stop} uvjete uvijek generira \textit{master} uređaj. Nakon svakog bajta prijamnik šalje odašiljaču ACK bit kojim se signalizira uspješno primanje podatka, odnosno NACK bit kojim se signalizira neuspješno primanje podatka. ACK i NACK bitovi se nazivaju signalom potvrde i definiraju se na sljedeći način: odašiljač otpušta SDA liniju tijekom potvrdnog takta kako bi prijamnik mogao spustiti SDA na nisku razinu na kojoj i ostaje tijekom visoke razine takta. Ako SDA ostaje u visokoj razini tijekom devete periode takta, to predstavlja NACK (engl. \textit{Not Acknowledge}) signal, a suprotan slučaj predstavlja ACK (engl. \textit{Acknowledge}) signal. Ako je došlo do NACK signala, \textit{master} uređaj može generirati \textit{stop} uvjet kako bi prekinuo prijenos ili može ponovno generirati \textit{start} uvjet kako bi započeo novi prijenos. Vremenski dijagram cijele komunikacije s potvrdnim signalima prikazan je na slici \ref{fig:i2c_timing_diagram_transaction}.
+
+\begin{figure}[hp]
+	\centering
+	\includegraphics[width=\textwidth]{I2C_vremenski_dijagram.PNG}
+	\caption{Prijenos podataka na I\textsuperscript{2}C sabirnici \cite{i2c_manual}}
+	\label{fig:i2c_timing_diagram_transaction}
+\end{figure}
+
+\subsection{Razlika I\textsuperscript{2}C periferije na STM32L471VGT6 i \newline STM32F407VGT6 mikrokontrolerima}
+
+Tijekom prijenosa koda sa starog mikrokontrolera na novi, primjećeno je da postoji razlika između struktura I\textsuperscript{2}C periferija. Točnije, postoji razlika između registarskih mapa na dvama periferijama, koje su vidljive usporedbom tablica \ref{Tab:l471_i2c_register_map} i \ref{Tab:f407_i2c_register_map} (\textit{napomena}: u tablicama nisu prikazani svi registri, jer se neki registri niti ne koriste, ili se koriste samo tijekom konfiguracije periferija. Za puni prikaz tablica treba provijeriti dokumentacije mikrokontrolera \cite{f407_manual}, \citep{l471_manual}).
+
+\begin{table}[H]
+	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32L471VGT6 mikrokontrolera \cite{l471_manual}}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{Offset} & \textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		\multirow{2}{*}{0x0} & I2C\_CR1 & \multicolumn{8}{c|}{Res.} & \rot{PECEN} & \rot{ALERTEN} & \rot{SMBDEN} & \rot{SMBHEN} & \rot{GCEN} & \rot{WUPEN} & \rot{NOSTRETCH} & \rot{SBC} & \rot{RXDMAEN} & \rot{TXDMAEN} & \rot{Res.} & \rot{ANFOFF} & \multicolumn{4}{c|}{DNF[3:0]} & \rot{ERRIE} & \rot{TCIE} & \rot{STOPIE} & \rot{NACKIE} & \rot{ADDRIE} & \rot{RXIE} & \rot{TXIE} & \rot{PE} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x4} & I2C\_CR2 & \multicolumn{5}{c|}{Res.} & \rot{PECBYTE} & \rot{AUTOEND} & \rot{RELOAD} & \multicolumn{8}{c|}{NBYTES[7:0]} & \rot{NACK} & \rot{STOP} & \rot{START} & \rot{HEAD10R} & \rot{ADD10} & \rot{RD\_WRN} & \multicolumn{10}{c|}{SADD[9:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x18} & I2C\_ISR & \multicolumn{8}{c|}{Res.} & \multicolumn{7}{c|}{ADDCODE[6:0]} & \rot{DIR} & \rot{BUSY} & \rot{Res.} & \rot{ALERT} & \rot{TIMEOUT} & \rot{PECERR} & \rot{OVR} & \rot{ARLO} & \rot{BERR} & \rot{TCR} & \rot{TC} & \rot{STOPF} & \rot{NACKF} & \rot{ADDR} & \rot{RXNE} & \rot{TXIS} & \rot{TXE} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x1C} & I2C\_ICR & \multicolumn{18}{c|}{Res.} & \rot{ALERTCF} & \rot{TIMOUTCF} & \rot{PECCF} & \rot{OVRCF} & \rot{ARLOCF} & \rot{BERRCF} & \multicolumn{2}{c|}{Res.} & \rot{STOPCF} & \rot{NACKCF	} & \rot{ADDRCF} & \multicolumn{3}{c|}{Res.} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & & & 0 & 0 & 0 & & & \\
+		\hline
+		\multirow{2}{*}{0x24} & I2C\_RXDR & \multicolumn{24}{c|}{Res.} & \multicolumn{8}{c|}{RXDATA[7:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x28} & I2C\_TXDR & \multicolumn{24}{c|}{Res.} & \multicolumn{8}{c|}{TXDATA[7:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
+	\label{Tab:l471_i2c_register_map}
+\end{table}
+
+\begin{table}[H]
+	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32F407VGT6 mikrokontrolera \cite{f407_manual}}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{Offset} & \textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		\multirow{2}{*}{0x0} & I2C\_CR1 & \multicolumn{16}{c|}{Res.} & \rot{SWRST} & \rot{Res.} & \rot{ALERT} & \rot{PEC} & \rot{POS} & \rot{ACK} & \rot{STOP} & \rot{START} & \rot{NOSTRETCH} & \rot{ENGC} & \rot{ENPEC} & \rot{ENARP} & \rot{SMBTYPE} & \rot{Res.} & \rot{SMBUS} & \rot{PE} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x4} & I2C\_CR2 & \multicolumn{19}{c|}{Res.} & \rot{LAST} & \rot{DMAEN} & \rot{ITBUFEN} & \rot{ITEVTEN} & \rot{ITERREN} & \multicolumn{2}{c|}{Res.} & \multicolumn{6}{c|}{FREQ[5:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & & & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x10} & I2C\_DR & \multicolumn{24}{c|}{Res.} & \multicolumn{8}{c|}{DR[7:0]} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x14} & I2C\_SR1 & \multicolumn{16}{c|}{Res.} & \rot{SMBALERT} & \rot{TIMEOUT} & \rot{Res.} & \rot{PECERR} & \rot{OVR} & \rot{AF} & \rot{ARLO} & \rot{BERR} & \rot{TxE} & \rot{RxNE} & \rot{Res.} & \rot{STOPF} & \rot{ADD10} & \rot{BTF} & \rot{ADDR} & \rot{SB} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		\multirow{2}{*}{0x18} & I2C\_SR2 & \multicolumn{16}{c|}{Res.} & \multicolumn{8}{c|}{PEC[7:0]} & \rot{DUALF} & \rot{SMBHOST} & \rot{SMBDEFAUL} & \rot{GENCALL} & \rot{Res.} & \rot{TRA} & \rot{BUSY} & \rot{MSL} \\
+		\cline{2-34}
+		& Reset value & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
+	\label{Tab:f407_i2c_register_map}
+\end{table}
+
+Vidljiva je razlika između količine registara, raspodjele i značenja njihovih bitova, kao i njihovih imena, što implicira različite funkcionalnosti pojedinih registara. Tako, npr. I\textsuperscript{2}C periferija kod STM32F407VGT6 sadržava 2 status registra: I2C\_SR1 i I2C\_SR2, dok kod STM32L471VGT6 postoji samo jedan status registar I2C\_ISR. Ta razlika je bitna zato što se tijekom prijenosa podataka na I\textsuperscript{2}C sabirnici trebaju provjeravati razne zastavice koje se mijenjaju tijekom komunikacije, kao što je npr. zastavica za prazni odašiljački registar (STM32F407VGT6: registar I2C\_SR1 bit 7, STM32L471VGT6: bit 0), zastavica za puni prijamnički registar (STM32F407VGT6: registar I2C\_SR1, bit 6, STM32L471VGT6: bit 2), zastavica za završetak prijenosa (STM32F407VGT6: ne postoji, STM32L471VGT6: bit 6) itd.
+
+Vidljivo je također da kod STM32L471VGT6 postoji zastavica ADDR, koja inače kod STM32F407VGT6 signalizira uspješan primitak adrese uređaja mete, a kod \newline STM32L471VGT6 ta zastavica se koristi isključivo u \textit{slave} načinu rada, tako da ta zastavica nije bitna za ovaj projekt. Kako onda mikrokontroler zna da je poslana adresa točna? Naime, STM32L471VGT6 ima poseban registar za pohranu adrese uređaja mete, pa kada mikrokontroler pošalje \textit{start} uvjet on automatski nakon završetka \textit{start} uvjeta pošalje i adresu uređaja mete, a uspješan primitak adrese signalizira zastavica I2C\_ISR\_TXIS kod slanja podataka, odnosno I2C\_ISR\_RXNE zastavica kod primitka podataka.
+
+Vidljive su i razlike u raspodjeli zastavica u registrima, kao i razlike u funkcijama koje zastavice signaliziraju. Inače bi te razlike stvarale probleme kod konfiguracije I\textsuperscript{2}C periferije, no, kako je tu brigu riješio kod generator ugrađen u STM32CubeIDE razvojno okruženje, nije bila posvećena pažnja tim razlikama. Način implementacije spomenutih razlika u programsku podršku opisan je u poglavlju z.
+
+\section{SPI sučelje}
+
+Protokol SPI se koristi za prijenos podataka između \textit{flash} memorije i mikrokontrolera, odnosno međuspremnika kamere. Kako bi se oslobodili resursi na mikrokontroleru, za prijenos podataka između kamere i \textit{flash} memorije se, u kombinaciji sa SPI protokolom, koristi i DMA prijenos. U ovom poglavlju bit će opisan SPI protokol i DMA prijenos i bit će istaknute razlike i problemi kod prilagođavanja programske podrške za STM32L471VGT6 mikrokontroler.
+
+\subsection{SPI protokol}
+
+SPI je sinkrono serijsko komunikacijsko sučelje koje se koristi za komunikaciju na kratkim udaljenostima, pretežito u ugradbenim računalnim sustavima \cite{spi_wikipedia}. 
+
+SPI uređaji komuniciraju u \textit{full-duplex} načinu rada koristeći \textit{master-slave} arhitekturu, obično sa jednim \textit{master} uređajem. Više \textit{slave} uređaja može biti spojeno na jedan upravljač tako da se aktivira određeni \textit{chip select} signal za pojedini uređaj.
+
+\subsubsection{Opis sučelja}
+
+SPI sabirnica se sastoji od četiri signala:
+\begin{itemize}
+	\item SCLK: Serijski takt (izvor je \textit{master} uređaj),
+	\item MOSI: \textit{Master Output Slave Input} (izvor podataka iz \textit{master} uređaja),
+	\item MISO: \textit{Master Input Slave Output} (izvor podataka iz \textit{slave} uređaja),
+	\item CS/SS: \textit{Chip/Slave Select} (aktivan nisko, signal iz \textit{master} uređaja, označava da se prenose podaci).
+\end{itemize}
+MOSI na \textit{master} uređaju se spaja na MOSI na \textit{slave} uređaju, dok se MISO na \textit{master} uređaju se spaja na MISO na \textit{slave} uređaju. CS/SS se koristi za pokretanje komunikacije između \textit{slave} i \textit{master} uređaja. Za svaki \textit{slave} uređaj postoji zaseban CS/SS priključak na \textit{master} uređaju. Takav način spajanja se naziva neovisni \textit{slave} uređaj. Primjer spajanja tri \textit{slave} uređaja na jedan \textit{master} uređaj u konfiguraciji neovisnog \textit{slave} uređaja prikazan je na slici \ref{fig:spi_three_slaves}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=7 cm]{SPI_three_slaves.svg.png}
+	\caption{Spoj tri \textit{slave} uređaja na jedan \textit{master} uređaj u konfiguraciji neovisnog \textit{slave} uređaja. Vidljivo je da \textit{master} uređaj ima tri SS priključka, a svaki odgovara jednom \textit{slave} uređaju, dok se SCLK, MOSI i MISO linije međusobno dijele između \textit{slave} uređaja \cite{spi_wikipedia}}
+	\label{fig:spi_three_slaves}
+\end{figure}
+Moguće je još spojiti uređaje u konfiguraciju ulančavanog \textit{slave} uređaja. U toj konfiguraciji \textit{slave} uređaji dijele isti CS/SS, a ulančavanjem preko MISO/MOSI linija podaci se prenose prema načelu posmačnog registra, koji je objašnjen u sljedećem potpoglavlju. Prikaz spajanja tri \textit{slave} uređaja se nalazi na slici \ref{fig:SPI_three_slaves_daisy_chained}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=7 cm]{SPI_three_slaves_daisy_chained.svg.png}
+	\caption{Spoj tri \textit{slave} uređaja na jedan \textit{master} uređaj u konfiguraciji ulančavanog \textit{slave} uređaja \cite{spi_wikipedia}}
+	\label{fig:SPI_three_slaves_daisy_chained}
+\end{figure}
+
+\subsubsection{Način rada}
+
+SPI sabirnica radi s jednim \textit{master} uređajem i jednim ili više \textit{slave} uređaja. Ako se koristi jedan \textit{slave} uređaj, onda CS signal može biti postavljen u nisku logičku razinu, ako \textit{slave} uređaj to dopušta. Neki \textit{slave} uređaji zahtijevaju padajući brid CS signala kako bi započela komunikacija. Ako se koristi više \textit{slave} uređaja potreban je zaseban CS signal \textit{master} uređaja za svaki \textit{slave} uređaj.
+
+\paragraph{Prijenos podataka}
+
+Za početak komunikacije \textit{master} uređaj konfigurira takt koristeći frekvenciju koju podržava \textit{slave} uređaj, obično do nekoliko MHz. \textit{Master} uređaj zatim odabire \textit{slave} uređaj postavljanjem CS linije u nisko logičko stanje. Ako je potreban period čekanja, npr. za AD (analogno-digitalnu) pretvorbu, \textit{master} uređaj mora pričekati minimalno taj period vremena prije puštanja takta.
+
+Tijekom svakog perioda takta obavlja se prijenos podataka u \textit{full-duplex} načinu rada. To znači da \textit{master} uređaj pošalje jedan bit na MOSI liniju, koji \textit{slave} uređaj pročita, dok u isto vrijeme \textit{slave} uređaj šalje jedan bit na MISO liniju, koji \textit{master} uređaj pročita. Takva sekvenca se održava čak i kada se izvodi jednosmjerni prijenos podataka.
+
+Prijenosi podataka uključuju dva posmačna registra zadane veličine, npr. 8 bitova, jedan u \textit{master} i drugi u \textit{slave} uređaju. Registri su spojeni u topologiji virtualnog prstena (slika \ref{fig:spi_circular_transfer}).
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{SPI_8-bit_circular_transfer.svg.png}
+	\caption{Tipičan spoj dvaju posmačna registra koji formiraju kružni međuspremnik \cite{spi_wikipedia}}
+	\label{fig:spi_circular_transfer}
+\end{figure}
+Podaci se obično pomiču tako da se prvo pomakne najznačajniji bit. Na brid takta, \textit{master} i \textit{slave} uređaj pomaknu bit i pošalju ga na prijenosnu liniju. Na sljedeći brid takta, na svakom prijamniku bit se uzorkuje s prijenosne linije i postavlja se kao novi najmanje značajni bit u posmačnom registru. \textit{Master} i \textit{slave} uređaji u potpunosti razmjene podatke u registrima nakon što se svi bitovi u registrima prebace. Ako je potrebno razmijeniti još podataka, posmačni registri se ponovno napune te se postupak ponavlja, a prijenos se može obavljati za bilo koji broj perioda takta. Kada je prijenos dovršen, \textit{master} uređaj prestaje davati takt i obično isključi CS signal, odnosno postavi ga na visoku razinu.
+
+Prijenos se obično obavlja u riječima širine 8 bitova, no moguća je i širina riječi od 16 bita, ili čak 12 bitova, koji se koristi za digitalno-analogne i analogno-digitalne pretvornike.
+
+\paragraph{Polaritet takta i faza}
+
+Osim što mora podesiti frekvenciju takta, \textit{master} uređaj mora isto tako podesiti polaritet takta (CPOL, engl. \textit{Clock Polarity}) i fazu (CPHA, engl. \textit{Clock Phase}) ovisno o podacima. Vremenski dijagram je prikazan na slici \ref{fig:spi_timing_diagram}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=7 cm]{SPI_timing_diagram2.svg.png}
+	\caption{Vremenski dijagram koji pokazuje polaritet takta i fazu. Crvene linije označuju vodeće bridove, a plave linije označavaju prateće bridove \cite{spi_wikipedia}.}
+	\label{fig:spi_timing_diagram}
+\end{figure}
+CPOL određuje polaritet kanala. Polaritet može biti invertiran jednostavnim inverterom.
+\begin{itemize}
+	\item Ako je CPOL = 0, onda takt miruje u niskom logičkom stanju, a svaki period se sastoji od impulsa visokog logičkog stanja. To znači da je vodeći brid rastući brid, a prateći brid padajući brid.
+	\item Ako je CPOL = 1, onda takt miruje u visokom logičkom stanju, a svaki period se sastoji od impulsa niskog logičkog stanja. To znači da je vodeći brid padajući brid, a prateći brid rastući brid.
+\end{itemize}
+CPHA određuje fazu podatkovnih bitova u odnosu na takt.
+\begin{itemize}
+	\item Ako je CPHA = 0, strana koja šalje podatke mijenja podatak na prateći brid prethodnog perioda takta, dok strana koja prima podetke prihvaća podatak na (ili ubrzo nakon) vodeći brid perioda takta. Izlazna strana zadržava valjani podatak sve do pojave pratećeg brida trenutnog perioda takta.
+	\item Ako je CPHA = 1, strana koja šalje podatke mijenja podatak na vodeći brid trenutnog perioda takta, dok strana koja prima podatke prihvaća podatak na (ili ubrzo nakon) pratećeg brida perioda takta. Izlazna strana zadržava valjani podatak do pojave vodećeg brida sljedećeg perioda takta. Na zadnji period, \textit{slave} uređaj zadržava valjani podatak na MISO liniji sve dok \textit{slave} uređaj ne bude deselektiran.
+\end{itemize}
+MOSI i MISO signali su obično stabilni za vrijeme pola perioda takta, sve do sljedeće promjene takta. SPI \textit{master} i \textit{slave} uređaji mogu uzorkovati podatke u bilo kojem vremenu unutar te polovice periode takta.
+
+Kombinacije različitih konfiguracija CPOL i CPHA bitova predstavljaju načine rada. Konvecija je da CPOL predstavlja viši bit, dok CPHA predstavlja niži bit. Načini rada kod ARM-ovih mikrokontrolera su prikazani u tablici \ref{Tab:spi_modes}.
+\begin{center}
+	\begin{table}[H]
+		\centering
+		\caption{SPI načini rada kod ARM-ovih mikrokontrolera \cite{spi_wikipedia}}
+		\begin{tabular}{| c | c | c |}
+			\hline
+			SPI način rada & CPOL & CPHA \\
+			\hline
+			0 & 0 & 0 \\
+			\hline
+			1 & 0 & 1 \\
+			\hline
+			2 & 1 & 0 \\
+			\hline
+			3 & 1 & 1 \\
+			\hline
+		\end{tabular}
+		\label{Tab:spi_modes}
+	\end{table}
+\end{center}
+
+\subsection{Prilagodba programske podrške sa STM32F407VGT6 mirokontrolera na STM32L471VGT6 mikrokontroler}
+
+Što se tiče programske podrške za SPI komunikaciju između mikrokontrolera, \textit{flash} memorije i kamere, nije došlo do nikakvih poteškoća kod prijenosa programske podrške s prethodno korištenog mikrokontrolera na trenutni. Pogledom na blok dijagrame SPI periferije (slike \ref{fig:f407_spi_block_diagram} i \ref{fig:l471_spi_block_diagram}) vidljiva je velika sličnost između mikrokontrolera. Razlike između kontrolnih registara nisu problem, s obzirom na to da njih podešava generator koda, dok se razlike u statusnim registrima mogu zanemariti radi korištenja definicija registara i zastavica u programskoj podršci koju je pružao proizvođač mikrokontrolera.
+
+Došlo je, međutim, do poteškoća kod prijenosa programske podrške za DMA prijenos, koje će biti objašnjene u sljedećem poglavlju.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{f407_spi_block_diagram.png}
+	\caption{SPI blok dijagram mikrokontrolera STM32407VGT6 \cite[str. 876]{f407_manual}}
+	\label{fig:f407_spi_block_diagram}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{l471_spi_block_diagram.png}
+	\caption{SPI blok dijagram mikrokontrolera STM32L471VGT6 \cite[str. 1451]{l471_manual}}
+	\label{fig:l471_spi_block_diagram}
+\end{figure}
+
+%Razlike između SPI periferijskih sklopova STM32F407VGT6 i STM32L471VGT6 mikrokontrolera postoje, međutim, s obzirom na način koji se SPI protokol koristi u ovom projektu, te razlike su zanemarive i može se reći da SPI komunikacija na trenuračno korištenom mikrokontroleru funkcionira na isti način kao i na prethodno korištenom mikrokontroleru.
+
+\subsection{DMA prijenos}
+
+DMA se koristi kako bi se omogućio prijenos podataka visokih brzina između periferijskih sklopova i memorije ili između dviju memorijskih jedinica \cite{f407_manual}. Podatci se brzo mogu prenijeti bez posredovanja procesora. Na taj se način oslobađaju resursi procesora kako bi se mogle izvoditi druge operacije za vrijeme prijenosa.
+
+U ovom projektu DMA prijenos se koristi između međuspremnika kamere i radne memorije mikrokontrolera.
+
+\subsubsection{Razlike DMA periferije na STM32F407VGT6 i \\ STM32L471VGT6 mikrokontrolerima}
+
+STM32F407VGT6 mikrokontroler ima dva DMA kontrolera. Blok dijagram jednog DMA kontrolera je prikazan na slici \ref{fig:f407_dma_block_diagram}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[height=10 cm]{f407_dma_block_diagram.png}
+	\caption{Blok dijagram DMA kontrolera na STM32F407VGT6 mikrokontroleru \cite{f407_manual}}
+	\label{fig:f407_dma_block_diagram}
+\end{figure}
+
+DMA kontroler obavlja izravan prijenos memorije; kao AHB (engl. \textit{AMBA High-performance Bus}, AMBA na engl. \textit{Advanced Microcontroler Bus Architecture}) \textit{master}, može u bilo kojem trenutku preuzeti kontrolu nad AHB sabirnicom i pokrenuti AHB transakcije. DMA kontroler može pokrenuti sljedeće transakcije:
+\begin{itemize}
+	\item prijenos sa periferije na memoriju,
+	\item prijenos sa memorije na periferiju,
+	\item prijenos sa memorije na memoriju.
+\end{itemize}
+S obzirom na to da se u ovom radu koriste prijenosi s periferije na memoriju i obrnuto, u daljnjem tekstu će se podrazumijevati samo ti slučajevi.
+
+DMA periferija ima dvije AHB \textit{master} sabirnice, jedna se koristi za pristup memoriji, a druga za pristup periferijama. AHB \textit{slave} sabirnica se koristi za programiranje DMA kontrolera.
+
+Pojedini kontroler ima 8 tokova (engl. \textit{stream}), te za svaki tok postoji 8 kanala (engl. \textit{channel}). Svaki tok je spojen na određeni sklopovski DMA kanal. Tokovi i kanali služe kako bi se ostvarila veza između ostalih periferija i DMA mikokrontrolera, tako da periferije mogu slati zahtjev za DMA prijenos. %Broj podataka koji se trebaju prenijeti (do 65535) je programabilan i povezan je sa širinom izvora periferije koja zahtijeva DMA prijenos. Registar koji sadržava broj podataka koji se trebaju prenijeti se dekrementira nakon svake transakcije.
+
+Svaki DMA prijenos se sastoji od tri operacije:
+\begin{itemize}
+	\item učitavanje sa periferijskog podatkovnog registra ili lokacije u memoriji, čije su adrese zapisane u DMA\_SxPAR ili DMA\_SxM0AR registru
+	\item spremanje podataka na periferijski podatkovni registar ili lokaciju u memoriji, čije su adrese zapisane u DMA\_SxPAR ili DMA\_SxM0AR registru
+	\item naknadno dekrementiranje DMA\_SxNDTR registra, koji sadržava broj podataka koji se još trebaju prenjeti
+\end{itemize}
+Spomenuti registri su prikazani u tablici \ref{Tab:f407_dma_register_map_1}. Kada periferija želi pristupiti DMA kontroleru, periferijski sklop šalje zahtjev DMA kontroleru. DMA kontroler poslužuje zahtjev ovisno o prioritetima kanala. Čim DMA kontroler pristupi periferiji, DMA kontroler periferiji šalje signal potvrde. Periferni uređaj ukida svoj zahtjev čim dobije potvrdni signal iz DMA kontrolera. Nakon što periferna jedinica ukine zahtjev, DMA kontroler ukida signal potvrde. Ako ima više zahtjeva, periferna jedinica može pokrenuti sljedeću transakciju.
+
+\begin{table}[H]
+	\caption{Registri DMA\_SxPAR, DMA\_SxM0AR i DMA\_SxNDTR kod STM32F407VGT6 mikrokontrolera. \textit{x} označava broj toka \cite{f407_manual}}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		DMA\_SxPAR & \multicolumn{32}{c|}{PA[31:0]} \\
+		\hline
+		Reset value & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		DMA\_M0AR & \multicolumn{32}{c|}{M0A[31:0]} \\
+		\hline
+		Reset value & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		DMA\_SxNDTR & \multicolumn{16}{c|}{Res.} & \multicolumn{16}{c|}{NDT[15:0]}\\
+		\hline
+		Reset value & & & & & & & & & & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
+	\label{Tab:f407_dma_register_map_1}
+\end{table}
+
+Svaki tok je povezan sa DMA zahtjevom, koji može biti odabran između 8 mogućih kanalnih zahtjeva. Odabir kanala određuju bitovi CHSEL[2:0] u DMA\_SxCR registru (tablica \ref{Tab:f407_dma_register_map_2}). Odabir kanala prikazan je na slici \ref{fig:f407_dma_channel_selection}.
+\begin{table}[H]
+	\caption{Registar DMA\_SxCR kod STM32F407VGT6 mikrokontrolera \citep{f407_manual}}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		DMA\_SxPAR & \multicolumn{4}{c|}{Res.} & \multicolumn{3}{c|}{\rot{CHSEL[2:0]}} & \multicolumn{2}{c|}{\rot{MBURST[1:0]}} & \multicolumn{2}{c|}{\rot{PBURST[1:0]}} & \rot{Res.} & \rot{CT} & \rot{DBM} & \multicolumn{2}{c|}{\rot{PL[1:0]}} & \rot{PINCOS} & \multicolumn{2}{c|}{\rot{MSIZE[1:0]}} & \multicolumn{2}{c|}{\rot{PSIZE[1:0]}} & \rot{MINC} & \rot{PINC} & \rot{CIRC} & \multicolumn{2}{c|}{\rot{DIR[1:0]}} & \rot{PFCTRL} & \rot{TCIE} & \rot{HTIE} & \rot{TEIE} & \rot{DMEIE} & \rot{EN} \\
+		\hline
+		Reset value & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+	\end{tabular}%
+	}
+	\label{Tab:f407_dma_register_map_2}
+\end{table} 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{f407_dma_channel_selection.png}
+	\caption{Odabir kanala \citep{f407_manual}}
+	\label{fig:f407_dma_channel_selection}
+\end{figure}
+Proučavanjem dokumentacije mikrokontrolera, zaključeno je da je za SPI prijenos putem DMA sklopa potrebno koristiti kanal 0 i tokove 3 (SPI2\_RX) i 4 (SPI2\_TX) \cite[str. 307]{f407_manual}. Odabrani tokovi se koriste zato što je kamera spojena na SPI2 periferiju mikrokontrolera.
+
+Blok dijagram DMA periferije na STM32L471VGT6 mikrokontroleru je prikazan na slici \ref{fig:l471_dma_block_diagram}. Vidljivo je da oba mikrokontrolera sadržavaju dvije DMA periferije. Za razliku od SMT32F407VGT6 mikrokontrolera, trenutačni mikrokontroler, STM32L471VGT6, nema dvije AHB \textit{master} sabirnice, već samo jednu AHB \textit{master} sabirnicu.
+
+STM32L471VGT6 nema tokove za ostvarivanje veze između periferija i DMA sklopa, već ima samo kanale, te se stoga veza između ostalih periferija i DMA kontrolera ostvaruje na drugačiji način, prikazan na slici \ref{fig:l471_dma_request_mapping}. Iz slike je vidljivo da se na ovom mikrokontroleru trebaju koristiti kanali 4 (SPI2\_RX) i 5 (SPI2\_TX).
+
+Još jedna razlika između DMA periferija dvaju mikrokontrolera se krije u prekidima koje DMA kontrolera i zastavicama za prekide. STM32F407VGT6 ima 5 različitih prekida: završetak prijenosa (TC, engl. \textit{Transfer Complete}), obavljena polovica prijenosa (HT, engl. \textit{Half Transfer}), greška u prijenosu (TE, engl. \textit{Transfer Error}), FIFO greška (FE, engl. \textit{FIFO Error}) i greška u direktnom načinu rada (DME, engl. \textit{Direct Mode Error}). STM32L471VGT6 ima 3 različita prekida: završetak prijenosa završetak prijenosa (TC), obavljena polovica prijenosa (HT), greška u prijenosu (TE). Kod STM32L471VGT6 postoji još globalni prekid (GI, engl. \textit{Global Interrupt}) koji se aktivira u svim slučajevima. Ako se, na primjer, želi DMA kontroler namjestiti da zahtijeva prekid kod završetka prijenosa, polovice prijenos i kod greške u prijenosu, to se može podesiti jednostavno aktiviranjem globalnih prekida. S obzirom na to STM32F407VGT6 sadržava više vrsta prekida, on sadržava i 2 prekidna registra, dok STM32L471VGT6 sadržava 1 prekidni registar.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{l471_dma_block_diagram.png}
+	\caption{Blok dijagram DMA periferije na STM32L471VGT6 mikrokontroleru \cite{l471_manual}}
+	\label{fig:l471_dma_block_diagram}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=10 cm]{l471_dma_request_mapping.png}
+	\caption{Mapiranje zahtjeva za DMA1 kontroler kod STM32L471VGT6 mikrokontrolera \cite[str. 338]{l471_manual}}
+	\label{fig:l471_dma_request_mapping}
+\end{figure}
+
+Što se tiče ostalih dijelova DMA periferija, mikrokontroleri funkcioniraju isto. Postoje, međutim, razlike u načinu konfiguracije DMA kontrolera, međutim, to nije predstavljalo problem, s obzirom na to da je konfiguracija prepuštena generatoru koda. Nazivi registara koji se koriste su također različiti između dva mikrokontrolera, iako su im funkcije iste. To također nije bio problem jer su se koristile definicije registara u programskoj podršci koju je pružao proizvođač mikrokontrolera, pa je bilo potrebno samo promijeniti nazive tih registara.
+
+\section{Nešto s CAN-om}

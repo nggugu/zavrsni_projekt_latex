@@ -1,0 +1,25 @@
+\chapter{Arhitektura sustava}
+
+Slanjem određenog signala na sklop za kameru može se uslikati slika, a nakon slikanja slika se spremi na vlastiti međuspremnik kamere. Cilj je spremljenu kameru pročitati iz međuspremnika kamere i spremiti ju na \textit{flash} memoriju koja se nalazi na pločici PDH-a, gdje može biti spremljena dok se ne zatraži slanje slike preko X-band predajnika na Zemlju.
+
+\textit{Flash} memorija, osim što služi za pohranu slike, služi i za pohranu podataka s drugih senzora. Ona prima i šalje podatke ovisno o poslanoj naredbi putem SPI komunikacije s mikrokontrolerom.
+
+Upravljačko sklopovlje PDH računala se sastoji od STM32F471VGT6 mikrokontrolera, spomenute vanjske \textit{flash} memorije, konektora za povezivanje s ostalim dijelovima sustava (uključujući i konektor za povezivanje s kamerom), sustava za napajanje, upravljačkog sklopovlja za CAN komunikaciju i sklopa za kontrolu izvođenja programa (engl. \textit{watchdog}) \cite{zavrsni_filip_juric}. Izgled tiskane pločice upravljačkog sklopovlja PDH računala prikazan je na slikama \ref{fig:PDH_PCB_1} i \ref{fig:PDH_PCB_2}. Konektor X1 služi za povezivanje sustava s kamerom.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[height= 10 cm]{PDH_PCB_1.PNG}
+	\caption{Prikaz gornje strane tiskane pločice upravljačkog sklopovlja PDH računala \cite{zavrsni_filip_juric}}
+	\label{fig:PDH_PCB_1}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[height= 10 cm]{PDH_PCB_2.PNG}
+	\caption{Prikaz donje strane tiskane pločice upravljačkog sklopovlja PDH računala \cite{zavrsni_filip_juric}}
+	\label{fig:PDH_PCB_2}
+\end{figure}
+
+Programska podrška za PDH računalo već je razvijena \cite{diplomski_goran_petrak}. Međutim, u međuvremenu je došlo do promjene izbora mikrokontrolera PDH računala, te je stoga postojeću programsku podršku bilo potrebno prilagoditi trenutačnom sklopovlju.
+
+S obzirom na prirodu ovog završnog projekta, gdje je naglasak bio na prilagođavanju postojeće programske podrške, u ovom radu će biti raspravljeni izazovi i izmjene do kojih je došlo tijekom prilagođavanja programske podrške. U poglavlju 2 dan je detaljan opis I\textsuperscript{2}C (engl. \textit{Inter-Integrated Circuit}) komunikacije, te su istaknute razlike između starog i novog sklopovlja koje su bile ključne za prilagođavanje programske podrške. Na isti način opisani su SPI (engl. \textit{Serial Peripheral Interface}) komunikacija i DMA (engl. \textit{Direct Memory Access}) prijenos u poglavlju x. Detaljan pregled razvijene programske podrške dan je u poglavlju y, gdje je opisana integracija programske podrške za kameru i \textit{flash} memorija u FreeRTOS operacijski sustav za rad u stvarnom vremenu.
