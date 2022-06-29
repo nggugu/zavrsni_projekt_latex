@@ -396,4 +396,64 @@ Još jedna razlika između DMA periferija dvaju mikrokontrolera se krije u preki
 
 Što se tiče ostalih dijelova DMA periferija, mikrokontroleri funkcioniraju isto. Postoje, međutim, razlike u načinu konfiguracije DMA kontrolera, međutim, to nije predstavljalo problem, s obzirom na to da je konfiguracija prepuštena generatoru koda. Nazivi registara koji se koriste su također različiti između dva mikrokontrolera, iako su im funkcije iste. To također nije bio problem jer su se koristile definicije registara u programskoj podršci koju je pružao proizvođač mikrokontrolera, pa je bilo potrebno samo promijeniti nazive tih registara.
 
-\section{Nešto s CAN-om}
+\section{CAN protokol}
+
+S obzirom na nepredvidive poteškoće sa sklopovljem PDH računala, nije ostalo vremena za implementaciju CAN komunikacije. Međutim, u ovom poglavlju dati će se opis protokola, kao i njegova implementacija na mikrokontroleru, te će se izložiti mogućnosti implementacije u ovaj projekt.
+
+\subsection{Opis protokola}
+
+CAN je serijska komunikacijska sabirnica koju je standardizirao ISO (engl. \textit{International Standardization Organization}), a razvijena je od strane BOSCH-a za automobilsku industriju s ciljem da se zamijeni komplicirani žičani kabel s dvožičnom sabirnicom \cite{can_manual}. Specifikacija zahtijeva su visoka otpornost na električne smetnje i sposobnost otkoravanja i ispravljanja greški kod prijenosa podataka.
+
+Komunikacijski protokol CAN opisuje kako se informacija prenosi između uređaja na mreži i kako odgovara OSI (engl. \textit{Open Systems Interconnection}) modelu koji je definiran u slojevima (slika \ref{fig:can_osi_model}). Stvarna komunikacija između uređaja spojenih fizičkim medijem je definirana fizičkim slojem modela.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{can_osi_model.png}
+	\caption{OSI model CAN protokola \cite[str. 2]{can_manual}}
+	\label{fig:can_osi_model}
+\end{figure}
+
+CAN komunikacijski protokol je protokol s višestrukim pristupom, osluškivanjem nosioca, detekcijom sudara i arbitracijom na paritet poruka (CSMA/CD+AMP). CSMA znači da svaki čvor na sabirnici mora čekati određeni period neaktivnosti prije nego što pokuša poslati poruku. CD+AMP znači da se sudari rješavaju bitnom (\textit{bit-wise}) arbitracijom, koja se temelji na prethodno namještenom prioritetu svake poruke u identifikacijskom polju poruke. Viši prioritet uvijek dobiva pristup sabirnici.
+
+Standardni CAN protokol s identifikatorom širine 11 bita omogućava brzine prijenosa od 125 kb/s do 1 Mb/s. Standardni protokol je poslije zamijenjen s proširenim protokolom s identifikatorom širine 29 bita. Standardni 11-bitni identifikator omogućava 2\textsuperscript{11}, ili 2048 različitih identifikatora poruka, dok prošireni 29-bitni identifikator omogućava 2\textsuperscript{29}, ili 536870912 različitih identifikatora. 
+
+\subsubsection{Standardni CAN protokol}
+
+Standardni CAN sa 11-bitnim identifikatorom je prikazan na slici \ref{fig:standard_can_bits}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{standard_can_bits.png}
+	\caption{Standardna CAN poruka: 11-bitni identifikator \cite[str. 3]{can_manual}}
+	\label{fig:standard_can_bits}
+\end{figure}
+Značenje pojedinih bitova na slici \ref{fig:standard_can_bits} su:
+\begin{itemize}
+	\item SOF - jedan bit, početak okvira (engl. \textit{Start Of Frame}), označava početak poruke i koristi se za sinkronizaciju čvorova na sabirnici nakon mirovanja,
+	\item Identifikator - 11-bitni identifikator standardnog CAN protokola, uspostavlja prioritet poruke. Manja binarna vrijednost znači viši prioritet,
+	\item RTR - jedan bit, zahtjev za udaljenim prijenosom (engl. \textit{Remote Transmission Request}) dominantan je kada se traži informacija s drugog čvora. Svi čvorovi prime zahtjev, ali identifikator određuje traženi čvor. Povratna informacija se također šalje na sve čvorove i svaki čvor ju može iskoristiti ako je potrebno. Na taj su način svi podatci koji se koriste u sustavu uniformni,
+	\item IDE - jedan bit, proširenje identifikatora (engl. \textit{Identifier Extension}), označava da se šalje standardni CAN identifikator bez proširenja,
+	\item r0 - rezervirani bit (za moguću upotrebu kod budućih dopuna standarda),
+	\item DLC - 4-bitna širina podatkovnog koda (engl. \textit{Data Length Code}), sadržava broj bajtova podatka koji se šalje,
+	\item Podatci - može se slati do 64 bitova aplikacijskih podataka,
+	\item CRC - 16-bitna (15 bitova plus granični bit) ciklička provjera redundancije (engl. \textit{Cyclic Redundancy Check}) sadržava kontrolni zbroj (\textit{checksum}, broj poslanih bitova) prethodnih aplikacijskih podataka za detekciju grešaka,
+	\item ACK - svaki čvor koji primi točnu poruku prepisuje ovaj recesivni bit u izvornoj poruci s dominantnim bitom, što znači da je poslana poruka bez greške. Ako prijemni čvor otkrije pogrešku i ostavi ovaj bit recesivnim, on odbacuje poruku i čvor koji šalje poruku ponavlja poruku nakon rearbitraže. Tako svaki čvor priznaje (ACK) integritet svojih podataka. ACK sadrži 2 bita, jedan je bit potvrde, a drugi je graničnik,
+	\item EOF - 7-bitno polje, kraj okvira (engl. \textit{End Of Frame}), označava kraj poruke i onemogućuje trpanje bitova, ukazujući na grešku kod trpanja u slučaju da je dominantan. Kada 5 bitova iste logičke razine nastanu u slijedu kod normalne operacije, bit suprotne logičke razine se \textit{natrpa} u podatke,
+	\item IFS - 7-bitno polje, međuokvirni prostor (engl. \textit{Interframe Space}), sadržava vrijeme potrebno da kontroler pomakne ispravno primljen okvir na njegovu valjanu poziciju u međuspremniku poruka.
+\end{itemize}
+
+\subsubsection{Prošireni CAN protokol}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{extended_can_bits.png}
+	\caption{Proširena CAN poruka: 29-bitni identifikator \cite[str. 4]{can_manual}}
+	\label{fig:extended_can_bits}
+\end{figure}
+Na slici \ref{fig:extended_can_bits} je vidljivo da je proširena CAN poruka ista kao i standardna, uz dodatak:
+\begin{itemize}
+	\item SRR - zamjenski udaljeni pristup (engl. \textit{Substitute Remote Request}), zamjenjuje RTR bit u standardnoj poruci kao rezervirano mjesto u proširenom formatu,
+	\item IDE - recesivni bit u proširenju identifikatora (engl. \textit{Identifier Extension} označava da slijedi još identifikatorskih bitova. 18-bitno proširenje slijedi nakon IDE,
+	\item r1 - nakon RTR i r0 bitova, dodan je još jedan rezervirani bit prije DLC bita.
+\end{itemize}
+
+\subsubsection{CAN poruka}
