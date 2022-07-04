@@ -413,7 +413,7 @@ Komunikacijski protokol CAN opisuje kako se informacija prenosi između uređaja
 	\label{fig:can_osi_model}
 \end{figure}
 
-CAN komunikacijski protokol je protokol s višestrukim pristupom, osluškivanjem nosioca, detekcijom sudara i arbitracijom na paritet poruka (CSMA/CD+AMP). CSMA znači da svaki čvor na sabirnici mora čekati određeni period neaktivnosti prije nego što pokuša poslati poruku. CD+AMP znači da se sudari rješavaju bitnom (\textit{bit-wise}) arbitracijom, koja se temelji na prethodno namještenom prioritetu svake poruke u identifikacijskom polju poruke. Viši prioritet uvijek dobiva pristup sabirnici.
+CAN komunikacijski protokol je protokol s višestrukim pristupom, osluškivanjem nosioca, detekcijom sudara i arbitraže na paritet poruka (CSMA/CD+AMP). CSMA znači da svaki čvor na sabirnici mora čekati određeni period neaktivnosti prije nego što pokuša poslati poruku. CD+AMP znači da se sudari rješavaju bitovnom (\textit{bit-wise}) arbitražom, koja se temelji na prethodno namještenom prioritetu svake poruke u identifikacijskom polju poruke. Viši prioritet uvijek dobiva pristup sabirnici.
 
 Standardni CAN protokol s identifikatorom širine 11 bita omogućava brzine prijenosa od 125 kb/s do 1 Mb/s. Standardni protokol je poslije zamijenjen s proširenim protokolom s identifikatorom širine 29 bita. Standardni 11-bitni identifikator omogućava 2\textsuperscript{11}, ili 2048 različitih identifikatora poruka, dok prošireni 29-bitni identifikator omogućava 2\textsuperscript{29}, ili 536870912 različitih identifikatora. 
 
@@ -457,3 +457,85 @@ Na slici \ref{fig:extended_can_bits} je vidljivo da je proširena CAN poruka ist
 \end{itemize}
 
 \subsubsection{CAN poruka}
+
+\paragraph{Arbitraža}
+
+Temeljna karakteristika CAN protokola je suprotno logičko stanje između sabirnice, upravljačkog ulaza i izlaza prijamnika (slika \ref{fig:inverted_logic_can}). U općenitom slučaju visoka logička razina se poistovjećuje s jedinicom, a niska logička razina se poistovjećuje s nulom, međutim, tako nije na CAN sabirnici. Pristup sabirnici se događa nasumično. Ako dva čvora pokušavaju istovremeno zauzeti sabirnicu, pristup se omogućuje pomoću nedestruktivne bitovne arbitraže. Nedestruktivno znači da čvor koji dobije arbitražu nastavlja sa slanjem poruke bez uništenja ili kvarenja od strane drugog čvora.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{inverted_logic_can.png}
+	\caption{Obrnuta logika CAN sabirnice \cite[str. 4]{can_manual}. D je upravljački ulaz, a R je izlaz prijamnika}
+	\label{fig:inverted_logic_can}
+\end{figure}
+
+Alokacija prioriteta porukama u identifikatoru je svojstvo CAN protokola koje ga čini privlačnim za upotrebu u sustavima za rad u stvarnom vremenu. Što je binarni broj identifikatora poruke niži, to je prioritet poruke viši. Identifikator koji se u potpunosti sastoji od nula čini poruku najvišeg prioriteta na mreži jer zadržava sabirnicu dominantnom najdulje. Iz tog razloga, ako dva čvora počnu sa slanjem poruke istovremeno, čvor koji pošalje posljednji identifikatorski bit kao nulu (dominantan) dok drugi čvor pošalje jedinicu (recesivan) zadržava kontrolu nad CAN sabirnicom i nastavlja sa slanjem poruke. Dominantan bit uvijek prebriše recesivan bit na CAN sabirnici.
+
+Treba imati na umu da čvor koji šalje poruku stalno nadzire svaki bit svog prijenosa. Ovo je razlog za konfiguraciju primopredajnika na slici \ref{fig:inverted_logic_can} u kojoj su CANH i CANL izlazne stezaljke upravljačkog sklopa interno povezane s ulazom prijemnika. Kašnjenje radi propagacije signala u unutarnjoj petlji od upravljačkog ulaza do izlaza prijemnika se obično koristi kao kvalitativna mjera CAN primopredajnika. Ovo propagacijsko kašnjenje se naziva vrijeme petlje (engl. \textit{loop time}).
+
+Slika \ref{fig:can_arbitration} prikazuje proces arbitraže kojim CAN kontroler automatski upravlja. Budući da svaki čvor kontinuirano nadzire vlastiti prijenos, dok dominantni bit čvora C prebrisuje recesivni bit čvora B, čvor B detektira da se stanje sabirnice ne poklapa sa bitom koji je poslao. Posljedično, čvor B prestaje sa prijenosom dok čvor C nastavlja sa slanjem poruke. Čvor B ponovno pokušava pristupiti sabirnici nakon što čvor C otpusti sabirnicu.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{can_arbitration.png}
+	\caption{Arbitraža na CAN sabirnici \cite[str. 5]{can_manual}}
+	\label{fig:can_arbitration}
+\end{figure}
+
+\paragraph{Tipovi CAN poruka}
+
+Postoje četiri tipova poruka, odnosno okvira, a to su:
+\begin{itemize}
+	\item Podatkovni okvir - najčešći oblik poruka, sastoji se od arbitražnog polja, podatkovnog polja, CRC polja, i potvrdnog polja. Arbitražno polje se sastoji od 11-bitnog identifikatora na slici \ref{fig:standard_can_bits} i RTR bita, koji je dominantan za podatkovne okvire. Na slici \ref{fig:extended_can_bits} sadržava 29 bitova i RTR bit. Slijedi podatkovno polje koje sadržava od 0 do 8 bajtova podataka, a zatim slijedi CRC polje koje sadržava 16-bitni kontrolni zbroj koji se koristi za detekciju pogrešaka. Potvrdno polje je posljednje,
+	\item Daljinski okvir - svrha daljinskog okvira je traženje prijenosa podataka s drugog čvora. Daljinski okvir sličan je podatkovnom okviru, s dvije važne razlike. Prvo, ovaj tip poruke je eksplicitno označen kao daljinski okvir preko recesivnog RTR bita u arbitražnom polju, a druga razlika je da nema podataka,
+	\item Okvir pogreške - ovo je posebna poruka koja krši pravila formata CAN poruke. Odašilje ju čvor kada detektira pogrešku u poruci, i uzrokuje da svi ostali čvorovi u mreži počnu slati okvir pogreške. Izvorni odašiljač zatim automatski ponovno pošalje poruku. Sustav brojača pogrešaka u CAN kontroleru osigurava da čvor ne zauzima sabirnicu uzastopnim slanjem okvira pogreške,
+	\item Okvir preopterećenja - okvir preopterećenja se spominje radi cjelovitosti. Sličan je okviru pogreške u smislu formata, i odašilje ga čvor koji postane previše zauzet. Primarno se koristi kao dodatna odgoda između poruka.
+\end{itemize}
+
+\paragraph{Ispravan okvir}
+
+Kada je posljednji bit završnog EOF polja primljen bez grešaka u recesivnom stanju, smatra se da je poruka bez greške. Dominantan bit u EOF polju uzrokuje da odašiljač ponovi slanje.
+
+\subsubsection{Provjera pogrešaka i ograničenje grešaka}
+
+Robusnost CAN protokola može se djelomično pripisati njegovim brojnim postupcima provjere pogrešaka. CAN protokol uključuje pet metoda provjere grešaka: tri na razini poruke i dvije na razini bita. Ako poruka ne uspije proći na bilo kojoj od ovih metoda otkrivanja pogreške, ona se ne prihvaća, te prijemni čvor generira okvir pogreške. Ovime se prisiljava odašiljački čvor da ponovno pošalje poruku dok se ne primi ispravna poruka. Ako neispravni čvor prekine sabirnicu kontinuiranim ponavljanjem pogreške, njegov kontroler uklanja sposobnost prijenosa nakon što se dosegne ograničenje broja pogrešaka.
+
+Provjeru pogreške na razini poruke provode CRC i ACK bitovi prikazani na slikama \ref{fig:standard_can_bits} i \ref{fig:extended_can_bits}. 16-bitni CRC sadrži kontrolni zbroj podataka prethodne aplikacije za otkrivanje pogreške s 15-bitnim kontrolnim zbrojem i 1-bitnim graničnikom. Polje ACK je dugo dva bita i sastoji se od bita potvrde i graničnog bita.
+
+Na razini poruke je također i provjera formata. Ova provjera pretražuje polja u poruci koja uvijek moraju sadržavati recesivne bitove. Ako se detektira dominantan bit, stvara se pogreška. Bitovi koji se provjeravaju su SOF, EOF, ACK granični bit i CRC granični bit.
+
+Na razini bita svaki odaslani bit nadzire odašiljač poruke. Ako je podatkovni bit (ne arbitražni bit) zapisan na sabirnicu, a pročitan je suprotan bit, generira se pogreška. Jedine iznimke su kod identifikatorskog polja poruke koja se koriste kod arbitraže i potvrdno polje koje zahtjeva da recesivni bit bude prebrisan od strane dominantnog bita.
+
+Posljednja metoda detekcije pogreške je pravilo trpanja bitova, gdje nakon pet uzastopnih bitova iste logičke razine, ako sljedeći bit nije komplement, generira se pogreška. Trpanje osigurava dostupnost rastućih bridova za tekuću sinkronizaciju mreže. Trpanje također osigurava da se tok bitova ne zamijeni s okvirom pogreške ili 7-bitnim međuokvirnim prostorom koji predstavlja kraj poruke. Natrpane bitove miče kontroler prijemnog čvora prije nego se podatci proslijede aplikaciji. S ovom logikom, aktivni okvir pogreške sastoji se od šest bitova, što krši pravilo trpanja bitova. Ovo se tumači kao pogreška od strane svih CAN čvorova koji zatim generiraju vlastiti okvir pogreške. To znači da okvir pogreške može biti dugačak od originalnih šest do dvanaest bitova sa svim odgovorima. Nakon ovog okvira pogreške slijedi polje razgraničenja od osam recesivnih bitova i razdoblje mirovanja sabirnice prije ponovnog slanja oštećene poruke. Važno je napomenuti da se ponovno poslana poruka još uvijek mora boriti za arbitražu na sabirnici.
+
+\subsubsection{CAN sabirnica}
+
+Podatkovna veza i slojevi fizičke signalizacije na slici \ref{fig:can_osi_model}, koji su inače transparentni operateru sustava, uključeni su u svaki kontroler koji implementira CAN protokol. Veza s fizičkim medijem se onda implementira kroz linijski primopredajnik kako bi se formirao sistemski čvor prikazan na slici \ref{fig:can_bus_details}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{can_bus_details.png}
+	\caption{Detalji CAN sabirnice \cite[str. 7]{can_manual}}
+	\label{fig:can_bus_details}
+\end{figure}
+Signalizacija je diferencijalna, odakle CAN dobiva svoju robusnu otpornost na šum i toleranciju na pogreške. Uravnoteženo diferencijalno signaliziranje smanjuje šum i dopušta visoku brzinu signalizacije preko kabela s upletenom paricom. Uravnoteženo znači da je tok struje u svakoj signalnoj liniji jednak, ali suprotan po smjeru, što rezultira efektom poništavanja polja, što je ključno za niske emisije šuma.
+
+Specifikacije standarda visoke brzine ISO 11898 dane su za maksimalnu brzinu prijenosa 1 Mbps s duljinom sabirnice od 40 m, s najviše 30 čvorova. Preporučuje se da se linije terminiraju na oba kraja s otpornicima R\textsubscript{L}, koji odgovaraju karakterističnoj impedanciji linije kako bi se spriječila refleksija signala.
+
+Izgled recesivnih i dominantnih bitova na signalnim linijama CANH i CANL CAN sabirnice prikazan je na slici \ref{fig:can_bus_states}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{can_bus_states.png}
+	\caption{Dominantno i recesivno stanje na CAN sabirnici \cite[str. 8]{can_manual}}
+	\label{fig:can_bus_states}
+\end{figure}
+
+CAN standard definira komunikacijsku mrežu koja povezuje sve čvorove spojene na sabirnicu i omogućava im međusobnu komunikaciju. Može, ali ne mora, postojati središnji kontrolni čvor, a čvorovi se mogu dodavati u bilo kojem trenutku, čak i kad mreža radi \engl{hot-plugging}.
+
+Primjer komunikacije između tri čvora dan je na slici \ref{fig:can_bus_traffic}. Čvor A završi slanje svoje poruke kada čvorovi B i C potvrde primitak ispravne poruke. Čvorovi B i C zatim započnu arbitražu, čvor C dobiva arbitražu i pošalje svoju poruku. Čvorovi A i B potvrde primitak poruke čvora C, te zatim čvor B nastavi sa slanjem svoje poruke. Obratiti pažnju na suprotni polaritet upravljačkog ulaza i izlaza na sabirnici.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{can_bus_traffic.png}
+	\caption{Promet na CAN sabirnici \cite[str. 9]{can_manual}}
+	\label{fig:can_bus_traffic}
+\end{figure}
+
+\subsection{CAN periferijsko sklopovlje na STM32L471VGT6 mikrokontroleru}
