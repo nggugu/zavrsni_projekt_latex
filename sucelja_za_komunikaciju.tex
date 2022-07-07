@@ -523,7 +523,7 @@ Specifikacije standarda visoke brzine ISO 11898 dane su za maksimalnu brzinu pri
 Izgled recesivnih i dominantnih bitova na signalnim linijama CANH i CANL CAN sabirnice prikazan je na slici \ref{fig:can_bus_states}.
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=\textwidth]{can_bus_states.png}
+	\includegraphics[height=7 cm]{can_bus_states.png}
 	\caption{Dominantno i recesivno stanje na CAN sabirnici \cite[str. 8]{can_manual}}
 	\label{fig:can_bus_states}
 \end{figure}
@@ -533,9 +533,170 @@ CAN standard definira komunikacijsku mrežu koja povezuje sve čvorove spojene n
 Primjer komunikacije između tri čvora dan je na slici \ref{fig:can_bus_traffic}. Čvor A završi slanje svoje poruke kada čvorovi B i C potvrde primitak ispravne poruke. Čvorovi B i C zatim započnu arbitražu, čvor C dobiva arbitražu i pošalje svoju poruku. Čvorovi A i B potvrde primitak poruke čvora C, te zatim čvor B nastavi sa slanjem svoje poruke. Obratiti pažnju na suprotni polaritet upravljačkog ulaza i izlaza na sabirnici.
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=\textwidth]{can_bus_traffic.png}
+	\includegraphics[height=7 cm]{can_bus_traffic.png}
 	\caption{Promet na CAN sabirnici \cite[str. 9]{can_manual}}
 	\label{fig:can_bus_traffic}
 \end{figure}
 
 \subsection{CAN periferijsko sklopovlje na STM32L471VGT6 mikrokontroleru}
+
+CAN periferija kod STM32L471VGT6 mikrokontrolera se naziva bxCAN \engl{Basic Extended CAN}. Podržava CAN protokole verzije 2.0A i B. Osim aplikacijskih poruka dodane su još i dijagnostičke poruke i poruke za upravljanje mrežom. Blok dijagram CAN periferijskog sklopovlja prikazan je na slici \ref{fig:can_block_diagram}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{can_block_diagram.png}
+	\caption{Blok dijagram CAN periferije na STM32L471VGT6 mikrokontroleru}
+	\label{fig:can_block_diagram}
+\end{figure}
+Modul bxCAN rukuje s prijenosom CAN poruka potpunosti automatski. Sklopovlje podržava standardne (11-bitne) i proširene (29-bitne) identifikatore. Aplikacija koristi kontrolne, statusne i konfiguracijske registre kako bi:
+\begin{itemize}
+	\item konfigurirala CAN parametre, npr. baud rate,
+	\item zahtijevala slanja,
+	\item rukovala prijemima,
+	\item upravljala prekidima,
+	\item dobivala dijagnostičke podatke.
+\end{itemize}
+Za postavljanje poruka, programska podrška na raspolaganju ima tri odašiljačka poštanska sandučića. Planer slanja odlučuje koji poštanski sandučić će se prvo slati. bxCAN pruža do 14 skalabilnih/podesivih banaka filtara za odabir nadolazećih poruka koje programska podrška treba, a ostale odbacuje. Sklopovlje koristi dvije primajuće FIFO \engl{First Input First Output} strukture za spremanje poruka. FIFO znači da se prvi podatak koji se unese prvi obrađuje. Tri kompletne poruke se mogu pohraniti u svaku FIFO strukturu. Sklopovlje u potpunosti upravlja FIFO strukturama.
+
+\subsubsection{Načini rada bxCAN sklopovlja}
+
+Sklopovlje bxCAN može raditi u tri glavna načina rada, a to su inicijalizacijski, normalni i spavajući. Nakon sklopovskog reseta, bxCAN je u spavajućem načinu rada kako bi se smanjila potrošnja snage, te se aktivira unutarnji \textit{pull-up} otpornik na CANTX liniji. Programska podrška može zahtijevati da bxCAN uđe u inicijalizacijski ili spavajući način rada tako da postavi INRQ ili SLEEP bitove u visoku logičku razinu u CAN\_MCR registru. Nakon što se odabere način rada, bxCAN potvrđuje odabir tako da postavi INAK ili SLAK bitove u visoku logičku razinu u CAN\_MSR registru, te se unutarnji \textit{pull-up} otpornik onemogućuje. Kada INAK i SLAK bitovi nisu postavljeni, bxCAN radi u normalnom načinu rada. Prije ulaska u normalan način rada bxCAN se mora sinkronizirati s CAN sabirnicom. Kako bi se sinkronizacija provela, bxCAN čeka da CAN sabirnica bude u mirovanju, a to znači da CANRX linija mora primijetiti 11 recesivnih bitova.
+
+\paragraph{Inicijalizacijski način rada}
+
+Inicijalizacijalizacija programske podrške se može obaviti dok je sklopovlje u inicijalizacijskom načinu rada. Kako bi se ušlo u ovaj način rada programska podrška treba postaviti INRQ bit u CAN\_MCR registru u visoku logičku razinu i pričekati dok sklopovlje ne potvrdi zahtjev postavljanjem INAK bita u CAN\_MSR registru u visoku logičku razinu.
+
+Kako bi se inicijalizacijski način rada napustio, programska podrška treba očistiti INRQ bit. bxCAN napušta inicijalizacijski način rada kada sklopovlje očisti INAK bit.
+
+Dok je u inicijalizacijskom načinu rada, sve poruke prema i od CAN sabirnice se zaustavljaju, a stanje izlaza CAN sabirnice CANTX je u recesivnom stanju. Ulaskom u inicijalizacijski način rada konfiguracijski registri se ne mijenjaju.
+
+Kako bi se inicijalizirao CAN kontroler, potrebno je podesiti CAN\_BTR \engl(Bit Timing Register) i CAN\_MCR registre. Za inicijalizaciju registara povezanih s CAN bankama filtera (način rada, razmjer, FIFO dodjela, aktivacija i vrijednost filtera), potrebno je postaviti FINIT bit u visoku logičku razinu u CAN\_FMR registru. Inicijalizacija filtera se također može obaviti i van inicijalizacijskog načina rada.
+
+\paragraph{Normalni način rada}
+
+Kada je inicijalizacija gotova, programska podrška mora zahtijevati od sklopovlja da uđe u normalni način rada kako bi se sklopovlje sinkroniziralo s CAN sabirnicom i započelo primanje i slanje poruka.
+
+Zahtjev za ulaskom u normalni način rada se izdaje čišćenjem INRQ bita u CAN\_MCR registru. bxCAN ulazi u normalni način rada i spreman je za sudjelovanje u aktivnostima sabirnice kada se sinkronizira s prijenosom podataka na CAN sabirnici. To se radi čekanjem pojave 11 uzastopnih recesivnih bitova, što označuje mirovanje sabirnice. Prelazak u normalni način rada potvrđuje sklopovlje čišćenjem INAK bita u CAN\_MSR registru.
+
+Inicijalizacija vrijednosti filtera je neovisno od inicijalizacijskog načina rada, ali se mora obaviti dok filter nije aktivan, tj. dok je odgovarajući FACTx bit u niskoj logičkoj razini. Razmjer filtera i način rada se moraju podesiti prije ulaska u normalni način rada.
+
+\paragraph{Spavajući način rada}
+
+Kako bi se smanjila potrošnja snage, bxCAN ima spavajući način rada. U ovaj način rada se ulazi kada programska podrška postavi SLEEP bit u CAN\_MCR registru u visoku logičku razinu. U ovom načinu rada, takt bxCAN periferije se zaustavlja, a poštanski sandučići su još uvijek dostupni programskoj podršci.
+
+Ako programska podrška pošalje zahtjev za ulazak u inicijalizacijski način rada tako da postavi INRQ bit dok je bxCAN u spavajućem načinu rada, potrebno je i očistiti SLEEP bit. bxCAN može izaći iz spavajućeg načina rada ako se očisti SLEEP bit ili ako se primijeti aktivnost na CAN sabirnici.
+
+Na primijećenu aktivnost CAN sabirnice, sklopovlje automatski provede proces buđenja tako da očisti SLEEP bit, pod uvjetom da je AWUM bit u CAN\_MCR registru postavljen u visoku logičku razinu. Ako je AWUM bit u niskoj logičkoj razini, programska podrška mora očistiti SLEEP bit kada se dogodi prekid za buđenje kako bi se izašlo iz spavajućeg načina rada.
+
+Nakon što se očisti SLEEP, bxCAN izlazi iz spavajućeg načina rada kada se sinkronizira sa CAN sabirnicom. Izlazak iz spavajućeg načina rada je dovršen nakon što sklopovlje očisti SLAK bit.
+
+\subsubsection{Funkcionalni opis bxCAN periferije}
+
+\paragraph{Slanje poruke}
+
+Kako bi se odaslala poruka aplikacija mora odabrati jedan prazan odašiljački poštanski sandučić, postaviti identifikator, duljinu podatkovnog koda (DLC) i podatke prije zahtijevanja slanja postavljanjem odgovarajućeg TXRQ bita u CAN\_TIxR registru. Kada poštanski sandučić više nije prazan, programska podrška više nema pristup pisanju u registre poštanskog sandučića. Odmah nakon što je TXRQ bit postavljen, poštanski sandučić ulazi u stanje čekanja i čeka da postane poštanski sandučić najvišeg prioriteta. Čim poštanski sandučić dobije najviši prioritet, zakaže se njegovo slanje. Slanje poruke zakazanog poštanskog sandučića počne kada CAN sabirnica postane neaktivna. Kada se poruka sandučića uspješno pošalje, on opet postane prazan. Sklopovlje naznačuje uspješno slanje poruke postavljanjem RQCP i TXOK bitova u CAN\_TSR registru u visoku logičku razinu. Ako prijenos zakaže, uzrok se naznačuje ALST bitom u CAN\_TSR registru u slučaju gubitka arbitraže i/ili TERR bitom u slučaju detekcije pogreške kod prijenosa.
+
+Prioritet slanja se može odrediti identifikatorom ili redoslijedom zahtjeva za prijenos. Kod prioriteta određenog identifikatorom, kada su više od jednog odašiljačkog poštanskog sandučića u stanju čekanja, prioritet slanja se određuje identifikatorom poruke koja je pohranjena u poštanski sandučić. Poruka s najnižom vrijednosti identifikatora ima najveći prioritet. Ako su vrijednosti identifikatora iste prioritet se daje poštanskom sandučiću koji ima najmanji broj. Kod prioriteta određenog redoslijedom zahtijeva za prijenos, odašiljački poštanski sandučići se mogu konfigurirati kao FIFO strukture za prijenos postavljanjem TXFP bita u CAN\_MCR registru. U ovom načinu rada prioritet prijenosa zadan je redoslijedom zahtijeva za prijenos.
+
+Zahtijev za slanjem se može prekinuti ako korisnik postavi ABRQ bit u CAN\_TSR registru. Ako je sandučić u stanju čekanja ili je zakazan, slanje se odmah prekida. Ako je sandučić u stanju slanja, moguća su dva ishoda. Ako je poruka sandučića uspješno poslana, sandučić postane prazan, a ako prijenos zakaže, sandučić postane zakazan za prijenos, te se prijenos prekida i sandučić postane prazan.
+
+
+
+\begin{table}[H]
+	\caption{Registri CAN periferije kod STM32L471VGT6 mikrokontrolera \citep[poglavlje 46]{l471_manual}}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+		\hline
+		\textbf{\begin{tabular}[c]{@{}c@{}}Register\\ name\end{tabular}} & \rotbf{31} & \rotbf{30} & \rotbf{29} & \rotbf{28} & \rotbf{27} & \rotbf{26} & \rotbf{25} & \rotbf{24} & \rotbf{23} & \rotbf{22} & \rotbf{21} & \rotbf{20} & \rotbf{19} & \rotbf{18} & \rotbf{17} & \rotbf{16} & \rotbf{15} & \rotbf{14} & \rotbf{13} & \rotbf{12} & \rotbf{11} & \rotbf{10} & \rotbf{9} & \rotbf{8} & \rotbf{7} & \rotbf{6} & \rotbf{5} & \rotbf{4} & \rotbf{3} & \rotbf{2} & \rotbf{1} & \rotbf{0} \\
+		\hline
+		CAN\_MCR & \multicolumn{15}{c|}{Res.} & \rot{DBF} & \rot{RESET} & \multicolumn{7}{c|}{Res.} & \rot{TTCM} & \rot{ABOM} & \rot{AWUM} & \rot{NART} & \rot{RFLM} & \rot{TXFP} & \rot{SLEEP} & \rot{INRQ} \\
+		\hline
+		Reset value & & & & & & & & & & & & & & & & 1 & 0 & & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+		\hline
+		CAN\_MSR & \multicolumn{20}{c|}{Res.} & \rot{RX} & \rot{SAMP} & \rot{RXM} & \rot{TXM} & \multicolumn{3}{c|}{Res.} & \rot{SLAKI} & \rot{WKUI} & \rot{ERRI} & \rot{SLAK} & \rot{INAK} \\
+		\hline
+		Reset value & & & & & & & & & & & & & & & & & & & & & 1 & 1 & 0 & 0 & & & & 0 & 0 & 0 & 1 & 0 \\
+		\hline
+		CAN\_TSR & \multicolumn{3}{c|}{\rot{LOW[2:0]}} & \multicolumn{3}{c|}{\rot{TME[2:0]}} & \multicolumn{2}{c|}{\rot{CODE[1:0]}} & \rot{ABRQ2} & \multicolumn{3}{c|}{Res.} & \rot{TERR2} & \rot{ALST2} & \rot{TXOK2} & \rot{RQCP2} & \rot{ABRQ1} & \multicolumn{3}{c|}{Res.} & \rot{TERR1} & \rot{ALST1} & \rot{TXOK1} & \rot{RQCP1} & \rot{ABRQ0} & \multicolumn{3}{c|}{Res.} & \rot{TERR0} & \rot{ALST0} & \rot{TXOK0} & \rot{RQCP0} \\
+		\hline
+		Reset value & 0 & 0 & 0 & 1 & 1 & 1 & 0 & 0 & 0 & & & & 0 & 0 & 0 & 0 & 0 & & & & 0 & 0 & 0 & 0 & 0 & & & & 0 & 0 & 0 & 0 \\
+		\hline
+		CAN\_RF0R & \multicolumn{26}{c|}{Res.} & \rot{RFOM0} & \rot{FOVR0} & \rot{FULL0} & \rot{Res.} & \multicolumn{2}{c|}{\rot{FMP0[1:0]}} \\
+		\hline
+		Reset value & & & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & & 0 & 0 \\
+		\hline
+		CAN\_RF1R & \multicolumn{26}{c|}{Res.} & \rot{RFOM1} & \rot{FOVR1} & \rot{FULL1} & \rot{Res.} & \multicolumn{2}{c|}{\rot{FMP1[1:0]}} \\
+		\hline
+		Reset value & & & & & & & & & & & & & & & & & & & & & & & & & & & 0 & 0 & 0 & & 0 & 0 \\
+		\hline
+		CAN\_IER & \multicolumn{14}{c|}{Res.} & \rot{SLKIE} & \rot{WKUIE} & \rot{ERRIE} & \multicolumn{3}{c|}{Res.} & \rot{LECIE} & \rot{BOFIE} & \rot{EPVIE} & \rot{EWGIE} & \rot{Res.} & \rot{FOVIE1} & \rot{FFIE1} & \rot{FMPIE1} & \rot{FOVIE0} & \rot{FFIE0} & \rot{FMPIE0} & \rot{TMEIE} \\
+		\hline
+		Reset value & & & & & & & & & & & & & & & 0 & 0 & 0 & & & & 0 & 0 & 0 & 0 & & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		CAN\_ESR & \multicolumn{8}{c|}{REC[7:0]} & \multicolumn{8}{c|}{TEC[7:0]} & \multicolumn{9}{c|}{Res.} & \multicolumn{3}{c|}{\rot{LEC[2:0]}} & \rot{Res.} & \rot{BOFF} & \rot{EPVF} & \rot{EWGF} \\
+		\hline
+		Reset value & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & & & & & & & & & 0 & 0 & 0 & & 0 & 0 & 0 \\
+		\hline
+		CAN\_BTR & \rot{SILM} & \rot{LBKM} & \multicolumn{4}{c|}{Rot.} & \multicolumn{2}{c|}{\rot{SJW[1:0]}} & \rot{Res.} & \multicolumn{3}{c|}{TS2[2:0]} & \multicolumn{4}{c|}{TS1[3:0]} & \multicolumn{6}{c|}{Res} & \multicolumn{10}{c|}{BRP[9:0]} \\
+		\hline
+		Reset value & 0 & 0 & & & & & 0 & 0 & & 0 & 1 & 0 & 0 & 0 & 1 & 1 & & & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		CAN\_TIxR & \multicolumn{11}{c|}{STID[10:0]/EXID[28:18]} & \multicolumn{18}{c|}{EXID[17:0]} & \rot{IDE} & \rot{RTR} & \rot{TXRQ} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & 0 \\
+		\hline
+		CAN\_TDTxR & \multicolumn{16}{c|}{TIME[15:0]} & \multicolumn{7}{c|}{Res.} & \rot{TGT} & \multicolumn{4}{c|}{Res.} & \multicolumn{4}{c|}{DLC[3:0]} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & & & & & & & & X & & & & & X & X & X & X \\
+		\hline
+		CAN\_TDLxR & \multicolumn{8}{c|}{DATA3[7:0]} & \multicolumn{8}{c|}{DATA2[7:0]} & \multicolumn{8}{c|}{DATA1[7:0]} & \multicolumn{8}{c|}{DATA0[7:0]} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X \\
+		\hline
+		CAN\_TDHxR & \multicolumn{8}{c|}{DATA7[7:0]} & \multicolumn{8}{c|}{DATA6[7:0]} & \multicolumn{8}{c|}{DATA5[7:0]} & \multicolumn{8}{c|}{DATA4[7:0]} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X \\
+		\hline
+		CAN\_RIxR & \multicolumn{11}{c|}{STID[10:0]/EXID[28:18]} & \multicolumn{18}{c|}{EXID[17:0]} & \rot{IDE} & \rot{RTR} & \rot{Res.} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X \\
+		\hline
+		CAN\_RDTxR & \multicolumn{16}{c|}{TIME[15:0]} & \multicolumn{8}{c|}{FMI[7:0]} & \multicolumn{4}{c|}{Res.} & \multicolumn{4}{c|}{DLC[3:0]} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X \\
+		\hline
+		CAN\_RDLxR & \multicolumn{8}{c|}{DATA3[7:0]} & \multicolumn{8}{c|}{DATA2[7:0]} & \multicolumn{8}{c|}{DATA1[7:0]} & \multicolumn{8}{c|}{DATA0[7:0]} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X \\
+		\hline
+		CAN\_RDHxR & \multicolumn{8}{c|}{DATA7[7:0]} & \multicolumn{8}{c|}{DATA6[7:0]} & \multicolumn{8}{c|}{DATA5[7:0]} & \multicolumn{8}{c|}{DATA4[7:0]} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X \\
+		\hline
+		CAN\_FMR & \multicolumn{18}{c|}{Res.} & \multicolumn{6}{c|}{CANSB[5:0]} & \multicolumn{7}{c|}{Res.} & \rot{FINIT} \\
+		\hline
+		Reset value & & & & & & & & & & & & & & & & & & & 0 & 0 & 1 & 1 & 1 & 0 & & & & & & & & 1 \\
+		\hline
+		CAN\_FM1R & \multicolumn{4}{c|}{Res.} & \multicolumn{28}{c|}{FMB[27:0]} \\
+		\hline
+		Reset value & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		CAN\_FS1R & \multicolumn{4}{c|}{Res.} & \multicolumn{28}{c|}{FSC[27:0]} \\
+		\hline
+		Reset value & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		CAN\_FFA1R & \multicolumn{4}{c|}{Res.} & \multicolumn{28}{c|}{FFA[27:0]} \\
+		\hline
+		Reset value & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		CAN\_FA1R & \multicolumn{4}{c|}{Res.} & \multicolumn{28}{c|}{FACT[27:0]} \\
+		\hline
+		Reset value & & & & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+		\hline
+		CAN\_FiRx & \multicolumn{32}{c|}{FB[31:0]} \\
+		\hline
+		Reset value & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X & X \\
+		\hline
+	\end{tabular}%
+	}
+	\label{Tab:f407_dma_register_map_2}
+\end{table}
