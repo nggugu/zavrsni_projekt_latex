@@ -599,7 +599,37 @@ Prioritet slanja se može odrediti identifikatorom ili redoslijedom zahtjeva za 
 
 Zahtijev za slanjem se može prekinuti ako korisnik postavi ABRQ bit u CAN\_TSR registru. Ako je sandučić u stanju čekanja ili je zakazan, slanje se odmah prekida. Ako je sandučić u stanju slanja, moguća su dva ishoda. Ako je poruka sandučića uspješno poslana, sandučić postane prazan, a ako prijenos zakaže, sandučić postane zakazan za prijenos, te se prijenos prekida i sandučić postane prazan.
 
+Kako bi se ispunio zahtjev za vremenski okinutom komunikacijom CAN standarda, implementiran je način rada bez automatskog ponovnog slanja. Kako bi se sklopovlje podesilo da radi u ovom načinu rada, NART bit u CAN\_MCR registru mora biti postavljen u visoku logičku razinu. U ovom načinu rada svako slanje se pokreće samo jednom. Ako prvi pokušaj zakaže, radi gubitka arbitraže ili pogreške, sklopovlje neće automatski pokrenuti ponovno slanje poruke. Na kraju pokušaja slanja, sklopovlje smatra slanje završenim i postavlja RQCP bit u CAN\_TSR registru u visoku logičku razinu. Rezultat slanja se može saznati pregledom bitova TXOK, ALST, TERR u CAN\_TSR registru.
 
+\paragraph{Način rada vremenski okinutom komunikacijom}
+
+U ovom načinu unutarnje brojilo CAN sklopovlja se aktivira i koristi za generiranje vrijednosti vremenske oznake pohranjene u registrima CAN\_RDTxR/CAN\_TDTxT (za Rx i Tx poštanske sandučiće). Unutarnje brojilo se poveća za jedan nakon isteka svakog CAN bitovnog vremena. Unutarnje brojilo bilježi se na točki uzorkovanja na bitu početka okvira u slanju i primanju.
+
+\paragraph{Primanje poruke}
+
+Za prijem CAN poruke na raspolaganju su tri poštanska sandučića posložena u FIFO strukturu. Kako bi se smanjila opterećenost procesora, pojednostavnila programska podrška i zagarantirala dosljednost podataka, FIFO strukturom upravlja sklopovlje. Aplikacija pristupa porukama koje su pohranjene u FIFO strukturama kroz izlazni FIFO poštanski sandučić.
+
+Primljena poruka smatra se ispravnom kada se primi na ispravan način opisan CAN protokolom (nema greške do pretposljednjeg bita EOF polja) i kada uspješno prođe kroz filtriranje identifikatora.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{receive_fifo_states.png}
+	\caption{Stanja prijemnih FIFO strukuta \cite{l471_manual}}
+	\label{fig:receive_fifo_states}
+\end{figure}
+Upravljanje FIFO strukturom ilustrirano je slikom \ref{fig:receive_fifo_states}. Počevši od praznog stanja \engl{empty}, prva primljena ispravna poruka se sprema u FIFO strukturu koja prelazi u \textit{pending\_1} stanje. Sklopovlje signalizira taj događaj postavljanjem bitova FMP[1:0] u CAN\_RFR registru na vrijednost 01b. Poruka postaje dostupna u izlaznom FIFO sandučiću. Programska podrška pročita sadržaj sandučića te ga otpušta postavljanjem RFOM bita u CAN\_RFR registru, te FIFO struktura ponovno postane prazna. Ako je, u međuvremenu, primljena još jedna ispravna poruka FIFO struktura ostaje u \textit{pending\_1} stanju i nova poruka je dostupna u izlaznom FIFO sandučiću. Ako aplikacija ne otpusti sandučić, sljedeća ispravna poruka se sprema u FIFO strukturu te se ulazi u \textit{pending\_2} stanje(FMP[1:0]=10b). Proces pohrane se ponavlja za sljedeću ispravnu poruku te FIFO ulazi u \textit{pending\_3} stanje (FMP[1:0]=11b). U ovom trenutku programska podrška mora otpustiti sandučić postavljanjem RFOM bita, kako bi sandučić bio dostupan za pohranu sljedeće ispravne poruke, u suprotnom sljedeća ispravna poruka uzrokuje gubitak poruke.
+
+Kada je FIFO struktura u \textit{pending\_3} stanju, sljedeća ispravna poruka dovodi do prekoračenja i poruka se gubi. Sklopovlje signalizira prekoračenje postavljanjem FOVR bita u CAN\_RFR registru. Koja se poruka točno gubi ovisi o konfiguraciji FIFO strukture:
+\begin{itemize}
+	\item ako je funkcija zaključivanja FIFO strukture isključena (RFLM bit u CAN\_MCR registru je očišćen) posljednja poruka koja je pohranjena u FIFO strukturi se prepisuje novom porukom. U ovom slučaju najnovija poruka je uvijek dostupna aplikaciji,
+	\item ako je funkcija zaključivanja FIFO strukture uključena (RFLM bit u CAN\_MCR registru je postavljen u jedinicu) najnovija poruka se odbacuje i programska podrška ima pristup trima najstarijim porukama.
+\end{itemize}
+
+Jednom kada se poruka pohrani u FIFO strukturu, ažuriraju se bitovi FMP[1:0] i generira se zahtjev za prekidom, pod uvijetom da je FMPIE bit u CAN\_IER registru postavljen u visoku logičku razinu. Kada FIFO struktura postane puna FULL bit u CAN\_RFR registru se postavlja u visoku logiču razinu i generira se zahtjev za prekid, pod uvijetom da je FFIE bit u CAN\_IER registru postavljen u jedinicu. Ako je FOVR bit u CAN\_IER registru postavljen u jedinicu, generira se zahtijev za prekidom svaki put kada se dogodi prekoračenje.
+
+\paragraph{Filtriranje identifikatora}
+
+U CAN protokolu identifikator poruke nije povezan sa adresom čvora nego je povezan sa sadržajem poruke. Posljedično, odašiljač šalje svoju poruku svim čvorovima.
 
 \begin{table}[H]
 	\caption{Registri CAN periferije kod STM32L471VGT6 mikrokontrolera \citep[poglavlje 46]{l471_manual}}

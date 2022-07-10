@@ -1,1 +1,98 @@
 \chapter{Programska podrška}
+
+Prilikom razvoja programske podrške korišteno je integrirano razvojno okruženje STM32CubeIDE, PDH sustav i programator ST-LINK/V2. Programska potpora razvijena je u jeziku C uz korištenje GCC prevodioca.
+
+\section{Korišteni programski paketi i biblioteke}
+
+Razvojno okruženje STM32CubeIDE nudi mogućnost grafičkog podešavanja parametara periferija i automatsko generiranje koda, čime su olakšane inicijalizacije raznih perifernih sklopova. Prije generiranja koda moguće je odabrati hoće li se koristiti HAL \engl(Hardware Abstraction Layer) ili LL \engl{Low-Layer} biblioteke.
+
+HAL biblioteke nude visoku razinu abstrakcije i lakše su za koristiti, međutim, one rade po principu "crne kutije", te ih stoga korisnik teže razumije. HAL funkcije također zauzimaju više radne memorije od LL funkcije jer u sebi sadržavaju kojekakve provjere vrijednosti i modifikacije unutarnjih HAL struktura, pa time nisu osigurane optimalne performanse.
+
+Iz tog razloga odlučeno je da će se koristiti LL biblioteke. LL funkcije omogućuju izravan pristup registrima periferija i korisnik ih daleko jednostavnije razumije, s obzirom na to da se često sastoje od samo jedne linije koda.
+
+\section{Programska potpora za kameru}
+
+Za rad s kamerom razvijene su korisničke funkcije prikazane u isječku \ref{lst:arducam_code}.
+
+\begin{lstlisting}[caption=Korisničke funkcije za Arducam 5MP Mini Plus, label={lst:arducam_code}]
+uint8_t ACAM_TestComms(void);
+uint8_t ACAM_SPI_Read(uint8_t reg);
+void ACAM_SPI_Write(uint8_t reg, uint8_t val);
+void ACAM_spi_read_package(uint8_t * buff, uint16_t size);
+void ACAM_I2C_Setup();
+uint8_t ACAM_I2C_Read(uint16_t reg);
+void ACAM_I2C_Write(uint16_t reg, uint8_t command);
+void ACAM_I2C_WriteSeq(const struct ACAM_I2C_Register commandSeq[]);
+uint8_t ACAM_TestComms(void);
+void ACAM_select_JPEG(void);
+void ACAM_select_RAW(uint8_t resolution);
+void ACAM_start_capture(void);
+uint32_t ACAM_get_image_size();
+void ACAM_set_exposure(uint16_t nr_lines, uint8_t nr_lines_frac);
+void ACAM_Reset(void);
+void ACAM_exp_gain_manual(void)
+void ACAM_exp_gain_auto(void)
+uint8_t ACAM_is_cap_complete(void)
+void ACAM_set_gain(uint8_t gain);
+\end{lstlisting}
+
+Za testiranje SPI i I\textsuperscript{2}C komunikacija između mikrokontrolera i kamere postoji funkcija \verb|ACAM_TestComms()|, za odabir između RAW i JPEG formata slike na raspolaganju su funkcije \verb|ACAM_select_RAW()| i \verb|ACAM_select_JPEG()|. Način upravljanja ekspozicijom odabire se funkcijama \verb|ACAM_exp_gain_manual()| i \verb|ACAM_exp_gain_auto()|, a ukoliko se odabere ručni način upravljanja ekspozicijom parametri vremena ekspozicije i pojačanja pojačala se podešavaju funkcijama \verb|ACAM_set_exposure()| i \verb|ACAM_set_gain()|. Komanda za početak slikanja se šalje funkcijom \verb|ACAM_start_capture()|, a provjera završetka slikanja se obavlja funkcijom \verb|ACAM_is_cap_complete()|. Navedene funkcije nije trebalo mijenjati u odnosu na prethodnu programsku podršku, pa one rade na isti način kao i u prethodnom radu \cite{diplomski_goran_petrak}. Funkcije koje direktno rade sa SPI i I\textsuperscript{2}C periferijom su jedine mijenjane s obzirom na to da se rad periferija između prethodno korištenog i trenutačno korištenog mikrokontrolera razlikuju, kako je i pokazano u poglavlju 3. U nastavku će biti istaknute razlike između starih i novih funkcija kao i obrazloženje radi čega je došlo do promjena.
+
+\subsection{Funkcije za rad sa I\textsuperscript{2}C periferijom}
+
+Funkcije za rad s I\textsuperscript{2}C periferijom navedene su u isječku \ref{lst:acam_i2c_functions}.
+
+\begin{lstlisting}[caption=Funkcije za rad s I\textsuperscript{2}C periferijom, label={lst:acam_i2c_functions}]
+void ACAM_I2C_Setup();
+uint8_t ACAM_I2C_Read(uint16_t reg);
+void ACAM_I2C_Write(uint16_t reg, uint8_t command);
+void ACAM_I2C_WriteSeq(const struct ACAM_I2C_Register commandSeq[]);
+\end{lstlisting}
+
+U odnosu na prethodnu programsku podršku dodana je funkcija \verb|ACAM_I2C_Setup()| koja podešava I\textsuperscript{2}C periferiju. Funkcija postavlja adresu uređaja s kojim se želi komunicirati, odnosno SADD registar, i govori periferiji želi li se na uređaj nešto čitati ili pisati, odnosno podešava RD\_WRN bit u I2C\_CR2 registru. Tu funkciju je važno pozvati prije svakog pokušaja komunikacije s kamerom. Funkcije \verb|ACAM_I2C_Write()|,  \verb|ACAM_I2C_Read()| i \verb|ACAM_I2C_WriteSeq()| služe za prijenos podataka između kamere i mikrokontrolera, i one su prošle manje promjene, konkretno, bilo je potrebno omogućiti drugačije prekide i provjeravati drugačije statusne zastavice, zato što registarska mapa I\textsuperscript{2}C periferije izgleda drugačije na STM32L471VGT6 mikrokontroleru nego na STM32F407VGT6 mikrokontroleru. Navedene promjene nije bilo teško implementirati zato što LL funkcije koriste intuitivna imena. Na primjer, funkcija koja omogućava TC prekid (prekid za završetak prijenosa) je \verb|LL_I2C_EnableIT_TC()|, a funkcija koja provjerava da li je podignuta zastavica BUSY (prijenos je u tijeku) je \verb|LL_I2C_IsActiveFlag_Busy()|.
+
+Prijenos preko I\textsuperscript{2}C protokola u ovom radu funkcionira tako da se u jednoj od funkcija koje su zadužene za prijenos podataka postavi adresa uređaja s kojim se želi komunicirati (u ovom slučaju kamera), nakon toga generira se \textit{start} uvjet i omogućuju se prekidi relevantni za vrstu prijenosa koja se želi obaviti (slanje ili primanje podataka). Stanje komunikacije se prati preko globalne zastavice koja se osvježava u prekidnoj podrutini \verb|I2C1_EV_IRQHandler()|. Jedina promjena koju je prekidan funkcija doživjela jest ta da je izbrisan kod za provjeru je li poslana adresa \textit{slave} uređaja. Naime, na prethodno korištenom mikrokontroleru nije postojao posebni registar za adresu \textit{slave} uređaja, nego se adresa slala preko izlaznog registra periferiju. Kod novog mikrokontrolera, čim se pošalje \textit{start} bit šalje se adresa \textit{slave} uređaja preko SADD registra i automatski se provjerava da ACK bit za potvrdu primitka točne adrese \textit{slave} uređaja. Ostatak funkcije funkcionira na isti način kao i na prethodnom mikrokontroleru.
+
+\subsection{Funkcije za rad sa SPI periferijom}
+
+Funkcije za rad s SPI periferijom navedene su u isječku \ref{lst:acam_spi_functions}.
+
+\begin{lstlisting}[caption=Funkcije za rad s SPI periferijom, label={lst:acam_spi_functions}]
+uint8_t ACAM_SPI_Read(uint8_t reg);
+void ACAM_SPI_Write(uint8_t reg, uint8_t val);
+void ACAM_spi_read_package(uint8_t * buff, uint16_t size);
+\end{lstlisting}
+
+\section{Učitavanje programa}
+
+Kako bi se programska podrška mogla učitati na mikrokontroler PDH sustava nužno je koristiti programator, u ovom slučaju ST-LINK/V2. Na raspolaganju je STM32F4DISCOVERY razvojni sustav koji ima ugrađen ST-LINK/V2 programator. Programator na razvojnom sustavu se može koristiti za programiranje mikrokontrolera na razvojnom sustavu ili programiranje mikrokontrolera na vanjskoj pločici. Koji mikrokontroler programator programira određuju prespojnici CN3 na razvojnom sustavu:
+\begin{itemize}
+	\item ako su oba prespojnika spojena, programira se mikrokontroler na razvojnom sustavu,
+	\item ako su oba prespojnika odspojena, programira se mikrokontroler na vanjskoj pločici.
+\end{itemize}
+Programiranje se izvodi preko CN2 konektora na razvojnom sustavu i X6 konektora na PDH sustavu. Funkcije stezaljki na pojedinim konektorima su dane u tablici \ref{Tab:conn_func}.
+\begin{center}
+	\begin{table}[H]
+		\centering
+		\caption{Opis stezaljki CN2 i X6 konektora \cite{zavrsni_filip_juric}, \cite{disc_manual}}
+		\begin{tabular}{| c | c | c |}
+			\hline
+			Redni broj stezaljke & CN2 & X6 \\
+			\hline
+			1. & VDD & VDD \\
+			\hline
+			2. & SWCLK & SWDIO \\
+			\hline
+			3. & GND & SWCLK \\
+			\hline
+			4. & SWDIO & SWO \\
+			\hline
+			5. & NRST & NRST \\
+			\hline
+			6. & SWO & GND \\
+			\hline
+		\end{tabular}
+		\label{Tab:conn_func}
+	\end{table}
+\end{center}
+Potrebno je spojiti istoimene stezaljke kako bi se učitavanje programa uspješno izvelo. Osim za programiranje, razvojni sustav se koristi kako bi PDH sustav imao napajanje, s obzirom na to da sustav napajanja na PDH sustavu trenutačno nije ispravno.
