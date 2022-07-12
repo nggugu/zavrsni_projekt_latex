@@ -671,6 +671,28 @@ Upravljanje pogreškama kao što je opisano u CAN protokolu odrađuje sklopovlje
 
 Kada je vrijednost TEC polja veća od 255 dolazi do \textit{Bus-Off} stanja koje je naznačeno preko BOFF bita u CAN\_ESR polju. U \textit{Bus-Off} stanju bxCAN periferija više ne može slati i primati poruke. Ovisno o ABOM bitu u CAN\_MCR registru, bxCAN se oporavi od \textit{Bus-Off} stanja automatski ili na zahtjev programske podrške. U oba slučaja bxCAN mora čekati redoslijed oporavka specificiran u CAN standardu (128 pojava 11 uzastopnih recesivnih bitova na CANRX liniji).
 
+\paragraph{Vrijeme bita}
+
+Logika vremena bita nadzire liniju serijske sabirnice i izvodi uzorkovanje i podešavanje točke uzorkovanja sinkronizacijom na rubu početnog bita i ponovnom sinkronizacijom na sljedećem rubovima.
+
+Način rada logike vremena bita se može objasniti dijeljenjem nominalnog vremena bita na tri segmenta (slika \ref{fig:bit_timing}):
+\begin{itemize}
+	\item sinkronizacijski segment (SYNC\_SEG) - u ovom segmentu se očekuje promjena bita. Njegova duljina je fiksna i iznosi jedan vremenski kvant (1 x t\textsubscript{q}),
+	\item prvi segment bita (BS1) - određuje lokaciju točke uzorkovanja. Njegovo trajanje je programabilno između 1 i 16 vremenskih kvanta, ali može se automatski produžiti kako bi se kompenzirao pozitivni fazni pomak koji nastaje radi razlika u frekvencijama raznih čvorova na mreži,
+	\item drugi segment bita (BS2) - određuje lokaciju točke odašiljanja. Njegovo trajanje je programabilno između 1 i 8 vremenskih kvanti, ali može se automatski smanjiti kako bi se kompenzirao negativni fazni pomak.
+\end{itemize}
+
+Širina skoka ponovne sinkronizacije (\textit{resynchronization jump width}, SJW) određuje gornju granicu iznosa produženja ili skraćivanja segmenata bita. Programabilna je između 1 i 4 vremenskih kvanta.
+
+Valjan rub se definira kao prva promjena u vremenu bita iz dominantnog u recesivno stanje sabirnice, pod uvjetom da kontroler sam ne pošalje recesivni bit. Ako se valjani rub detektira u BS1 umjesto SYNC\_SEG, BS1 se produžuje za do SJW, kako bi se odgodila točka uzorkovanja. Ako se valjanu rub detektira u BS2 umjesto u SYNC\_SEG, BS2 se skraćuje za do SJW, kako bi se točka odašiljanja pomaknula ranije.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{bit_timing.png}
+	\caption{Prikaz i proračun vremena bita \cite[str. 1645]{l471_manual}}
+	\label{fig:bit_timing}
+\end{figure}
+
 \begin{table}[H]
 	\caption{Registri CAN periferije kod STM32L471VGT6 mikrokontrolera \citep[poglavlje 46]{l471_manual}}
 	\resizebox{\textwidth}{!}{%

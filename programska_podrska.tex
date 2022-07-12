@@ -116,17 +116,21 @@ Zajedničko svim prethodnim funkcijama je korištenje funkcije prikazane u isje�
 void W25N_instruction_execute( W25N_instruction_nr instr, uint8_t *params, uint8_t *data_or_rbs, uint32_t nr_data_bytes);
 \end{lstlisting}
 
-\noindent Funkcija \verb|W25N_instruction_execute()| se izvršavaju instrukcije na \text{flash} memoriji i ona radi direktno s registrima SPI periferije. U ovoj funkciji su jedino nastajali problemi, a greška se događala kod upisa u podatkovni registar SPI periferiji. Na primjer, ako se želi poslati neki podatak preko SPI protokola, željeni podatak potrebno je upisati u registar SPI2\_DR, a način na koji se je to radilo u prethodnoj programskoj prikazan je u isječku koda \ref{lst:spi_dr_old}.
+\noindent Funkcija \verb|W25N_instruction_execute()| se izvršavaju instrukcije na \text{flash} memoriji i ona radi direktno s registrima SPI periferije. U ovoj funkciji su jedino nastajali problemi, a greška se događala kod upisa u podatkovni registar SPI periferiji. Na primjer, ako se želi poslati neki podatak preko SPI protokola, željeni podatak potrebno je upisati u registar SPI1\_DR, a način na koji se je to radilo u prethodnoj programskoj prikazan je u isječku koda \ref{lst:spi_dr_old}.
 
 \begin{lstlisting}[caption=Upis podatka u SPI2\_DR registar, label={lst:spi_dr_old}]
-W25N_SPIn->DR = 0x69;
+SPI1->DR = 0x69;
 \end{lstlisting}
 
 \noindent Naime, SPI komunikacija u ovom projektu radi s 8-bitnim podatcima, međutim, promatranjem linije kroz osciloskop, primijećeno je da se šalje 16-bitni podatak, s tim da se traženi podatak nalazi u gornja dva bajta. Ovaj problem riješen je korištenjem odgovarajuće LL funkcije, a u slučaju slanja podatka, primjer u isječku koda \ref{lst:spi_dr_old} prikazan je na ispravno napisan način u isječku koda \ref{lst:spi_dr_new}.
 
-\begin{lstlisting}[caption=Ispravan upis podatka u SPI2\_DR registar, lable={lst:spi_dr_new}]
-LL_SPI_TransmitData8(SPI2_DR, 0x69);
+\begin{lstlisting}[caption=Ispravan upis podatka u SPI2\_DR registar, label={lst:spi_dr_new}]
+LL_SPI_TransmitData8(SPI1, 0x69);
 \end{lstlisting}
+
+\section{Integracija s operacijskim sustavom FreeRTOS}
+
+\section{CAN sučelje}
 
 \section{Učitavanje programa}
 
