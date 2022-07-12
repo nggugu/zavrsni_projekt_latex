@@ -398,11 +398,11 @@ Još jedna razlika između DMA periferija dvaju mikrokontrolera se krije u preki
 
 \section{CAN protokol}
 
-S obzirom na nepredvidive poteškoće sa sklopovljem PDH računala, nije ostalo vremena za implementaciju CAN komunikacije. Međutim, u ovom poglavlju dati će se opis protokola, kao i njegova implementacija na mikrokontroleru, te će se izložiti mogućnosti implementacije u ovaj projekt.
+S obzirom na to da je na tiskanoj pločici PDH sustava sklopovlje za CAN komunikaciju krivo povezan, nije bilo moguće napisati programsku podršku za CAN komunikaciju. Međutim, u ovom poglavlju dati će se opis protokola, kao i njegova implementacija na mikrokontroleru, te će se izložiti mogućnosti implementacije u ovaj projekt.
 
 \subsection{Opis protokola}
 
-CAN je serijska komunikacijska sabirnica koju je standardizirao ISO (engl. \textit{International Standardization Organization}), a razvijena je od strane BOSCH-a za automobilsku industriju s ciljem da se zamijeni komplicirani žičani kabel s dvožičnom sabirnicom \cite{can_manual}. Specifikacija zahtijeva su visoka otpornost na električne smetnje i sposobnost otkoravanja i ispravljanja greški kod prijenosa podataka.
+CAN je serijska komunikacijska sabirnica koju je standardizirao ISO (engl. \textit{International Standardization Organization}), a razvijena je od strane tvrtke BOSCH za automobilsku industriju s ciljem da se zamijeni složeni žičani kabel s dvožičnom sabirnicom \cite{can_manual}. Specifikacija zahtijeva su visoka otpornost na električne smetnje i sposobnost otkrivanja i ispravljanja greški kod prijenosa podataka.
 
 Komunikacijski protokol CAN opisuje kako se informacija prenosi između uređaja na mreži i kako odgovara OSI (engl. \textit{Open Systems Interconnection}) modelu koji je definiran u slojevima (slika \ref{fig:can_osi_model}). Stvarna komunikacija između uređaja spojenih fizičkim medijem je definirana fizičkim slojem modela.
 
@@ -413,9 +413,9 @@ Komunikacijski protokol CAN opisuje kako se informacija prenosi između uređaja
 	\label{fig:can_osi_model}
 \end{figure}
 
-CAN komunikacijski protokol je protokol s višestrukim pristupom, osluškivanjem nosioca, detekcijom sudara i arbitraže na paritet poruka (CSMA/CD+AMP). CSMA znači da svaki čvor na sabirnici mora čekati određeni period neaktivnosti prije nego što pokuša poslati poruku. CD+AMP znači da se sudari rješavaju bitovnom (\textit{bit-wise}) arbitražom, koja se temelji na prethodno namještenom prioritetu svake poruke u identifikacijskom polju poruke. Viši prioritet uvijek dobiva pristup sabirnici.
+CAN komunikacijski protokol je protokol s višestrukim pristupom, osluškivanjem nosioca, detekcijom sudara i arbitražom na paritet poruka (CSMA/CD+AMP). CSMA znači da svaki čvor na sabirnici mora čekati određeni period neaktivnosti prije nego što pokuša poslati poruku. CD+AMP znači da se sudari rješavaju bitovnom (\textit{bit-wise}) arbitražom, koja se temelji na prethodno namještenom prioritetu svake poruke u identifikacijskom polju poruke. Viši prioritet uvijek dobiva pristup sabirnici.
 
-Standardni CAN protokol s identifikatorom širine 11 bita omogućava brzine prijenosa od 125 kb/s do 1 Mb/s. Standardni protokol je poslije zamijenjen s proširenim protokolom s identifikatorom širine 29 bita. Standardni 11-bitni identifikator omogućava 2\textsuperscript{11}, ili 2048 različitih identifikatora poruka, dok prošireni 29-bitni identifikator omogućava 2\textsuperscript{29}, ili 536870912 različitih identifikatora. 
+Standardni CAN protokol s identifikatorom širine 11 bita omogućava brzine prijenosa od 125 kb/s do 1 Mb/s. Standardni protokol u praktičnim primjenama je zamijenjen s proširenim protokolom s identifikatorom širine 29 bita. Standardni 11-bitni identifikator omogućava 2\textsuperscript{11}, ili 2048 različitih identifikatora poruka, dok prošireni 29-bitni identifikator omogućava 2\textsuperscript{29}, ili 536870912 različitih identifikatora. 
 
 \subsubsection{Standardni CAN protokol}
 
@@ -460,7 +460,8 @@ Na slici \ref{fig:extended_can_bits} je vidljivo da je proširena CAN poruka ist
 
 \paragraph{Arbitraža}
 
-Temeljna karakteristika CAN protokola je suprotno logičko stanje između sabirnice, upravljačkog ulaza i izlaza prijamnika (slika \ref{fig:inverted_logic_can}). U općenitom slučaju visoka logička razina se poistovjećuje s jedinicom, a niska logička razina se poistovjećuje s nulom, međutim, tako nije na CAN sabirnici. Pristup sabirnici se događa nasumično. Ako dva čvora pokušavaju istovremeno zauzeti sabirnicu, pristup se omogućuje pomoću nedestruktivne bitovne arbitraže. Nedestruktivno znači da čvor koji dobije arbitražu nastavlja sa slanjem poruke bez uništenja ili kvarenja od strane drugog čvora.
+Temeljna karakteristika CAN protokola je suprotno logičko stanje između sabirnice, upravljačkog ulaza i izlaza prijamnika (slika \ref{fig:inverted_logic_can}). U općenitom slučaju visoka logička razina se poistovjećuje s jedinicom, a niska logička razina se poistovjećuje s nulom, međutim, tako nije na CAN sabirnici. Pristup sabirnici se događa nasumično. Ako dva čvora pokušavaju istovremeno zauzeti sabirnicu, pristup se omogućuje pomoću nedestruktivne bitovne arbitraže. Nedestruktivno znači da postupak arbitraže ni na koji način ne utječe na poruke, odnosno čvor koji dobije arbitražu može nastaviti sa slanjem poruke.
+
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\textwidth]{inverted_logic_can.png}
@@ -468,7 +469,7 @@ Temeljna karakteristika CAN protokola je suprotno logičko stanje između sabirn
 	\label{fig:inverted_logic_can}
 \end{figure}
 
-Alokacija prioriteta porukama u identifikatoru je svojstvo CAN protokola koje ga čini privlačnim za upotrebu u sustavima za rad u stvarnom vremenu. Što je binarni broj identifikatora poruke niži, to je prioritet poruke viši. Identifikator koji se u potpunosti sastoji od nula čini poruku najvišeg prioriteta na mreži jer zadržava sabirnicu dominantnom najdulje. Iz tog razloga, ako dva čvora počnu sa slanjem poruke istovremeno, čvor koji pošalje posljednji identifikatorski bit kao nulu (dominantan) dok drugi čvor pošalje jedinicu (recesivan) zadržava kontrolu nad CAN sabirnicom i nastavlja sa slanjem poruke. Dominantan bit uvijek prebriše recesivan bit na CAN sabirnici.
+Alokacija prioriteta porukama u identifikatoru je svojstvo CAN protokola koje ga čini pogodnim za upotrebu u sustavima za rad u stvarnom vremenu. Što je binarni broj identifikatora poruke niži, to je prioritet poruke viši. Identifikator koji se u potpunosti sastoji od nula čini poruku najvišeg prioriteta na mreži jer zadržava sabirnicu dominantnom najdulje. Iz tog razloga, ako dva čvora počnu sa slanjem poruke istovremeno, čvor koji pošalje posljednji identifikatorski bit kao nulu (dominantan) dok drugi čvor pošalje jedinicu (recesivan) zadržava kontrolu nad CAN sabirnicom i nastavlja sa slanjem poruke. Dominantan bit uvijek prebriše recesivan bit na CAN sabirnici.
 
 Treba imati na umu da čvor koji šalje poruku stalno nadzire svaki bit svog prijenosa. Ovo je razlog za konfiguraciju primopredajnika na slici \ref{fig:inverted_logic_can} u kojoj su CANH i CANL izlazne stezaljke upravljačkog sklopa interno povezane s ulazom prijemnika. Kašnjenje radi propagacije signala u unutarnjoj petlji od upravljačkog ulaza do izlaza prijemnika se obično koristi kao kvalitativna mjera CAN primopredajnika. Ovo propagacijsko kašnjenje se naziva vrijeme petlje (engl. \textit{loop time}).
 
@@ -488,7 +489,7 @@ Postoje četiri tipova poruka, odnosno okvira, a to su:
 	\item Podatkovni okvir - najčešći oblik poruka, sastoji se od arbitražnog polja, podatkovnog polja, CRC polja, i potvrdnog polja. Arbitražno polje se sastoji od 11-bitnog identifikatora na slici \ref{fig:standard_can_bits} i RTR bita, koji je dominantan za podatkovne okvire. Na slici \ref{fig:extended_can_bits} sadržava 29 bitova i RTR bit. Slijedi podatkovno polje koje sadržava od 0 do 8 bajtova podataka, a zatim slijedi CRC polje koje sadržava 16-bitni kontrolni zbroj koji se koristi za detekciju pogrešaka. Potvrdno polje je posljednje,
 	\item Daljinski okvir - svrha daljinskog okvira je traženje prijenosa podataka s drugog čvora. Daljinski okvir sličan je podatkovnom okviru, s dvije važne razlike. Prvo, ovaj tip poruke je eksplicitno označen kao daljinski okvir preko recesivnog RTR bita u arbitražnom polju, a druga razlika je da nema podataka,
 	\item Okvir pogreške - ovo je posebna poruka koja krši pravila formata CAN poruke. Odašilje ju čvor kada detektira pogrešku u poruci, i uzrokuje da svi ostali čvorovi u mreži počnu slati okvir pogreške. Izvorni odašiljač zatim automatski ponovno pošalje poruku. Sustav brojača pogrešaka u CAN kontroleru osigurava da čvor ne zauzima sabirnicu uzastopnim slanjem okvira pogreške,
-	\item Okvir preopterećenja - okvir preopterećenja se spominje radi cjelovitosti. Sličan je okviru pogreške u smislu formata, i odašilje ga čvor koji postane previše zauzet. Primarno se koristi kao dodatna odgoda između poruka.
+	\item Okvir preopterećenja - okvir preopterećenja se spominje radi cjelovitosti. Sličan je okviru pogreške u smislu formata i odašilje ga čvor koji postane previše zauzet. Primarno se koristi kao dodatna odgoda između poruka.
 \end{itemize}
 
 \paragraph{Ispravan okvir}
@@ -501,15 +502,15 @@ Robusnost CAN protokola može se djelomično pripisati njegovim brojnim postupci
 
 Provjeru pogreške na razini poruke provode CRC i ACK bitovi prikazani na slikama \ref{fig:standard_can_bits} i \ref{fig:extended_can_bits}. 16-bitni CRC sadrži kontrolni zbroj podataka prethodne aplikacije za otkrivanje pogreške s 15-bitnim kontrolnim zbrojem i 1-bitnim graničnikom. Polje ACK je dugo dva bita i sastoji se od bita potvrde i graničnog bita.
 
-Na razini poruke je također i provjera formata. Ova provjera pretražuje polja u poruci koja uvijek moraju sadržavati recesivne bitove. Ako se detektira dominantan bit, stvara se pogreška. Bitovi koji se provjeravaju su SOF, EOF, ACK granični bit i CRC granični bit.
+Na razini poruke provodi se također i provjera formata. Ova provjera pretražuje polja u poruci koja uvijek moraju sadržavati recesivne bitove. Ako se detektira dominantan bit, stvara se pogreška. Bitovi koji se provjeravaju su SOF, EOF, ACK granični bit i CRC granični bit.
 
 Na razini bita svaki odaslani bit nadzire odašiljač poruke. Ako je podatkovni bit (ne arbitražni bit) zapisan na sabirnicu, a pročitan je suprotan bit, generira se pogreška. Jedine iznimke su kod identifikatorskog polja poruke koja se koriste kod arbitraže i potvrdno polje koje zahtjeva da recesivni bit bude prebrisan od strane dominantnog bita.
 
-Posljednja metoda detekcije pogreške je pravilo trpanja bitova, gdje nakon pet uzastopnih bitova iste logičke razine, ako sljedeći bit nije komplement, generira se pogreška. Trpanje osigurava dostupnost rastućih bridova za tekuću sinkronizaciju mreže. Trpanje također osigurava da se tok bitova ne zamijeni s okvirom pogreške ili 7-bitnim međuokvirnim prostorom koji predstavlja kraj poruke. Natrpane bitove miče kontroler prijemnog čvora prije nego se podatci proslijede aplikaciji. S ovom logikom, aktivni okvir pogreške sastoji se od šest bitova, što krši pravilo trpanja bitova. Ovo se tumači kao pogreška od strane svih CAN čvorova koji zatim generiraju vlastiti okvir pogreške. To znači da okvir pogreške može biti dugačak od originalnih šest do dvanaest bitova sa svim odgovorima. Nakon ovog okvira pogreške slijedi polje razgraničenja od osam recesivnih bitova i razdoblje mirovanja sabirnice prije ponovnog slanja oštećene poruke. Važno je napomenuti da se ponovno poslana poruka još uvijek mora boriti za arbitražu na sabirnici.
+Posljednja metoda detekcije pogreške je pravilo umetanja redundantnih bitova \engl{bit stuffing}, gdje nakon pet uzastopnih bitova iste logičke razine, ako sljedeći bit nije komplement, generira se pogreška. Umetanje redundantnih bitova osigurava dostupnost rastućih bridova za tekuću sinkronizaciju mreže. Umetanje također osigurava da se tok bitova ne zamijeni s okvirom pogreške ili 7-bitnim međuokvirnim prostorom koji predstavlja kraj poruke. Umetnute bitove miče kontroler prijemnog čvora prije nego se podatci proslijede aplikaciji. S ovom logikom, aktivni okvir pogreške sastoji se od šest bitova, što krši pravilo umetanja redundantnih bitova. Ovo se tumači kao pogreška od strane svih CAN čvorova koji zatim generiraju vlastiti okvir pogreške. To znači da okvir pogreške može biti dugačak od originalnih šest do dvanaest bitova sa svim odgovorima. Nakon ovog okvira pogreške slijedi polje razgraničenja od osam recesivnih bitova i razdoblje mirovanja sabirnice prije ponovnog slanja oštećene poruke. Važno je napomenuti da ponovno poslana poruka još uvijek mora proći arbitražu kako bi dobila pristup sabirnici.
 
 \subsubsection{CAN sabirnica}
 
-Podatkovna veza i slojevi fizičke signalizacije na slici \ref{fig:can_osi_model}, koji su inače transparentni operateru sustava, uključeni su u svaki kontroler koji implementira CAN protokol. Veza s fizičkim medijem se onda implementira kroz linijski primopredajnik kako bi se formirao sistemski čvor prikazan na slici \ref{fig:can_bus_details}
+Podatkovna veza i slojevi fizičke signalizacije na slici \ref{fig:can_osi_model}, koji su inače transparentni operateru sustava, uključeni su u svaki kontroler koji implementira CAN protokol. Veza s fizičkim medijem se onda implementira kroz linijski primopredajnik kako bi se formirao sistemski čvor prikazan na slici \ref{fig:can_bus_details}.
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\textwidth]{can_bus_details.png}
@@ -520,7 +521,7 @@ Signalizacija je diferencijalna, odakle CAN dobiva svoju robusnu otpornost na š
 
 Specifikacije standarda visoke brzine ISO 11898 dane su za maksimalnu brzinu prijenosa 1 Mbps s duljinom sabirnice od 40 m, s najviše 30 čvorova. Preporučuje se da se linije terminiraju na oba kraja s otpornicima R\textsubscript{L}, koji odgovaraju karakterističnoj impedanciji linije kako bi se spriječila refleksija signala.
 
-Izgled recesivnih i dominantnih bitova na signalnim linijama CANH i CANL CAN sabirnice prikazan je na slici \ref{fig:can_bus_states}.
+Izgled recesivnih i dominantnih bitova na signalnim linijama CANH i CANL prikazan je na slici \ref{fig:can_bus_states}.
 \begin{figure}[H]
 	\centering
 	\includegraphics[height=7 cm]{can_bus_states.png}
@@ -528,7 +529,7 @@ Izgled recesivnih i dominantnih bitova na signalnim linijama CANH i CANL CAN sab
 	\label{fig:can_bus_states}
 \end{figure}
 
-CAN standard definira komunikacijsku mrežu koja povezuje sve čvorove spojene na sabirnicu i omogućava im međusobnu komunikaciju. Može, ali ne mora, postojati središnji kontrolni čvor, a čvorovi se mogu dodavati u bilo kojem trenutku, čak i kad mreža radi \engl{hot-plugging}.
+CAN standard definira komunikacijsku mrežu koja povezuje sve čvorove spojene na sabirnicu i omogućava im međusobnu komunikaciju. Može, ali ne mora postojati središnji kontrolni čvor, a čvorovi se mogu dodavati u bilo kojem trenutku, čak i kad se na mreži odvija komunikacija \engl{hot-plugging}.
 
 Primjer komunikacije između tri čvora dan je na slici \ref{fig:can_bus_traffic}. Čvor A završi slanje svoje poruke kada čvorovi B i C potvrde primitak ispravne poruke. Čvorovi B i C zatim započnu arbitražu, čvor C dobiva arbitražu i pošalje svoju poruku. Čvorovi A i B potvrde primitak poruke čvora C, te zatim čvor B nastavi sa slanjem svoje poruke. Obratiti pažnju na suprotni polaritet upravljačkog ulaza i izlaza na sabirnici.
 \begin{figure}[H]
@@ -555,7 +556,7 @@ Modul bxCAN rukuje s prijenosom CAN poruka potpunosti automatski. Sklopovlje pod
 	\item upravljala prekidima,
 	\item dobivala dijagnostičke podatke.
 \end{itemize}
-Za postavljanje poruka, programska podrška na raspolaganju ima tri odašiljačka poštanska sandučića. Planer slanja odlučuje koji poštanski sandučić će se prvo slati. bxCAN pruža do 14 skalabilnih/podesivih banaka filtara za odabir nadolazećih poruka koje programska podrška treba, a ostale odbacuje. Sklopovlje koristi dvije primajuće FIFO \engl{First Input First Output} strukture za spremanje poruka. FIFO znači da se prvi podatak koji se unese prvi obrađuje. Tri kompletne poruke se mogu pohraniti u svaku FIFO strukturu. Sklopovlje u potpunosti upravlja FIFO strukturama.
+Za postavljanje poruka, programska podrška na raspolaganju ima tri odašiljačke \textit{mailbox} strukture. Planer slanja odlučuje koja \textit{mailbox} struktura će se prvo slati. bxCAN pruža do 14 skalabilnih/podesivih banaka filtara za odabir nadolazećih poruka koje programska podrška treba, a ostale odbacuje. Sklopovlje koristi dvije primajuće FIFO \engl{First Input First Output} strukture za spremanje poruka. FIFO znači da se prvi podatak koji se unese prvi obrađuje. Tri kompletne poruke se mogu pohraniti u svaku FIFO strukturu. Sklopovlje u potpunosti upravlja FIFO strukturama.
 
 \subsubsection{Načini rada bxCAN sklopovlja}
 
@@ -579,35 +580,35 @@ Zahtjev za ulaskom u normalni način rada se izdaje čišćenjem INRQ bita u CAN
 
 Inicijalizacija vrijednosti filtera je neovisno od inicijalizacijskog načina rada, ali se mora obaviti dok filter nije aktivan, tj. dok je odgovarajući FACTx bit u niskoj logičkoj razini. Razmjer filtera i način rada se moraju podesiti prije ulaska u normalni način rada.
 
-\paragraph{Spavajući način rada}
+\paragraph{Način rada s niskom potrošnjom energije \engl{sleep mode}}
 
-Kako bi se smanjila potrošnja snage, bxCAN ima spavajući način rada. U ovaj način rada se ulazi kada programska podrška postavi SLEEP bit u CAN\_MCR registru u visoku logičku razinu. U ovom načinu rada, takt bxCAN periferije se zaustavlja, a poštanski sandučići su još uvijek dostupni programskoj podršci.
+Kako bi se smanjila potrošnja snage, bxCAN ima način rada s niskom potrošnjom energije. U ovaj način rada se ulazi kada programska podrška postavi SLEEP bit u CAN\_MCR registru u visoku logičku razinu. U ovom načinu rada, takt bxCAN periferije se zaustavlja, a \textit{mailbox} strukture su još uvijek dostupne programskoj podršci.
 
-Ako programska podrška pošalje zahtjev za ulazak u inicijalizacijski način rada tako da postavi INRQ bit dok je bxCAN u spavajućem načinu rada, potrebno je i očistiti SLEEP bit. bxCAN može izaći iz spavajućeg načina rada ako se očisti SLEEP bit ili ako se primijeti aktivnost na CAN sabirnici.
+Ako programska podrška pošalje zahtjev za ulazak u inicijalizacijski način rada tako da postavi INRQ bit dok je bxCAN u načinu rada s niskom potrošnjom energije, potrebno je i očistiti SLEEP bit. bxCAN može izaći iz načina rada s niskom potrošnjom energije ako se očisti SLEEP bit ili ako se primijeti aktivnost na CAN sabirnici.
 
-Na primijećenu aktivnost CAN sabirnice, sklopovlje automatski provede proces buđenja tako da očisti SLEEP bit, pod uvjetom da je AWUM bit u CAN\_MCR registru postavljen u visoku logičku razinu. Ako je AWUM bit u niskoj logičkoj razini, programska podrška mora očistiti SLEEP bit kada se dogodi prekid za buđenje kako bi se izašlo iz spavajućeg načina rada.
+Na primijećenu aktivnost CAN sabirnice, sklopovlje automatski provede proces buđenja tako da očisti SLEEP bit, pod uvjetom da je AWUM bit u CAN\_MCR registru postavljen u visoku logičku razinu. Ako je AWUM bit u niskoj logičkoj razini, programska podrška mora očistiti SLEEP bit kada se dogodi prekid za buđenje kako bi se izašlo iz načina rada s niskom potrošnjom energije.
 
-Nakon što se očisti SLEEP, bxCAN izlazi iz spavajućeg načina rada kada se sinkronizira sa CAN sabirnicom. Izlazak iz spavajućeg načina rada je dovršen nakon što sklopovlje očisti SLAK bit.
+Nakon što se očisti SLEEP, bxCAN izlazi iz načina rada s niskom potrošnjom energije kada se sinkronizira sa CAN sabirnicom. Izlazak iz načina rada s niskom potrošnjom energije je dovršen nakon što sklopovlje očisti SLAK bit.
 
 \subsubsection{Funkcionalni opis bxCAN periferije}
 
 \paragraph{Slanje poruke}
 
-Kako bi se odaslala poruka aplikacija mora odabrati jedan prazan odašiljački poštanski sandučić, postaviti identifikator, duljinu podatkovnog koda (DLC) i podatke prije zahtijevanja slanja postavljanjem odgovarajućeg TXRQ bita u CAN\_TIxR registru. Kada poštanski sandučić više nije prazan, programska podrška više nema pristup pisanju u registre poštanskog sandučića. Odmah nakon što je TXRQ bit postavljen, poštanski sandučić ulazi u stanje čekanja i čeka da postane poštanski sandučić najvišeg prioriteta. Čim poštanski sandučić dobije najviši prioritet, zakaže se njegovo slanje. Slanje poruke zakazanog poštanskog sandučića počne kada CAN sabirnica postane neaktivna. Kada se poruka sandučića uspješno pošalje, on opet postane prazan. Sklopovlje naznačuje uspješno slanje poruke postavljanjem RQCP i TXOK bitova u CAN\_TSR registru u visoku logičku razinu. Ako prijenos zakaže, uzrok se naznačuje ALST bitom u CAN\_TSR registru u slučaju gubitka arbitraže i/ili TERR bitom u slučaju detekcije pogreške kod prijenosa.
+Kako bi se odaslala poruka aplikacija mora odabrati jednu praznu odašiljačku \textit{mailbox} strukturu, postaviti identifikator, duljinu podatkovnog koda (DLC) i podatke prije zahtijevanja slanja postavljanjem odgovarajućeg TXRQ bita u CAN\_TIxR registru. Kada \textit{mailbox} struktura više nije prazna, programska podrška više nema pristup pisanju u registre \textit{mailbox} strukture. Odmah nakon što je TXRQ bit postavljen, \textit{mailbox} struktura ulazi u stanje čekanja i čeka da postane \textit{mailbox} struktura najvišeg prioriteta. Čim \textit{mailbox} struktura dobije najviši prioritet, zakaže se njezino slanje. Slanje poruke zakazane \textit{mailbox} strukture počne kada CAN sabirnica postane neaktivna. Kada se poruka \textit{mailbox} strukture uspješno pošalje, ona opet postane prazna. Sklopovlje naznačuje uspješno slanje poruke postavljanjem RQCP i TXOK bitova u CAN\_TSR registru u visoku logičku razinu. Ako prijenos zakaže, uzrok se naznačuje ALST bitom u CAN\_TSR registru u slučaju gubitka arbitraže i/ili TERR bitom u slučaju detekcije pogreške kod prijenosa.
 
-Prioritet slanja se može odrediti identifikatorom ili redoslijedom zahtjeva za prijenos. Kod prioriteta određenog identifikatorom, kada su više od jednog odašiljačkog poštanskog sandučića u stanju čekanja, prioritet slanja se određuje identifikatorom poruke koja je pohranjena u poštanski sandučić. Poruka s najnižom vrijednosti identifikatora ima najveći prioritet. Ako su vrijednosti identifikatora iste prioritet se daje poštanskom sandučiću koji ima najmanji broj. Kod prioriteta određenog redoslijedom zahtijeva za prijenos, odašiljački poštanski sandučići se mogu konfigurirati kao FIFO strukture za prijenos postavljanjem TXFP bita u CAN\_MCR registru. U ovom načinu rada prioritet prijenosa zadan je redoslijedom zahtijeva za prijenos.
+Prioritet slanja se može odrediti identifikatorom ili redoslijedom zahtjeva za prijenos. Kod prioriteta određenog identifikatorom, kada su više od jedne odašiljačke \textit{mailbox} strukture u stanju čekanja, prioritet slanja se određuje identifikatorom poruke koja je pohranjena u \textit{mailbox} strukturi. Poruka s najnižom vrijednosti identifikatora ima najveći prioritet. Ako su vrijednosti identifikatora iste prioritet se daje \textit{mailbox} strukturi koja ima najmanji broj. Kod prioriteta određenog redoslijedom zahtijeva za prijenos, odašiljačke \textit{mailbox} strukture se mogu konfigurirati kao FIFO strukture za prijenos postavljanjem TXFP bita u CAN\_MCR registru. U ovom načinu rada prioritet prijenosa zadan je redoslijedom zahtijeva za prijenos.
 
-Zahtijev za slanjem se može prekinuti ako korisnik postavi ABRQ bit u CAN\_TSR registru. Ako je sandučić u stanju čekanja ili je zakazan, slanje se odmah prekida. Ako je sandučić u stanju slanja, moguća su dva ishoda. Ako je poruka sandučića uspješno poslana, sandučić postane prazan, a ako prijenos zakaže, sandučić postane zakazan za prijenos, te se prijenos prekida i sandučić postane prazan.
+Zahtjev za slanjem se može prekinuti ako korisnik postavi ABRQ bit u CAN\_TSR registru. Ako je \textit{mailbox} struktura u stanju čekanja ili je zakazana, slanje se odmah prekida. Ako je u stanju slanja, moguća su dva ishoda. Ako je poruka \textit{mailbox} strukture uspješno poslana, struktura postane prazna, a ako prijenos zakaže, struktura postane zakazana za prijenos, te se prijenos prekida i struktura postane prazna.
 
 Kako bi se ispunio zahtjev za vremenski okinutom komunikacijom CAN standarda, implementiran je način rada bez automatskog ponovnog slanja. Kako bi se sklopovlje podesilo da radi u ovom načinu rada, NART bit u CAN\_MCR registru mora biti postavljen u visoku logičku razinu. U ovom načinu rada svako slanje se pokreće samo jednom. Ako prvi pokušaj zakaže, radi gubitka arbitraže ili pogreške, sklopovlje neće automatski pokrenuti ponovno slanje poruke. Na kraju pokušaja slanja, sklopovlje smatra slanje završenim i postavlja RQCP bit u CAN\_TSR registru u visoku logičku razinu. Rezultat slanja se može saznati pregledom bitova TXOK, ALST, TERR u CAN\_TSR registru.
 
 \paragraph{Način rada vremenski okinutom komunikacijom}
 
-U ovom načinu unutarnje brojilo CAN sklopovlja se aktivira i koristi za generiranje vrijednosti vremenske oznake pohranjene u registrima CAN\_RDTxR/CAN\_TDTxT (za Rx i Tx poštanske sandučiće). Unutarnje brojilo se poveća za jedan nakon isteka svakog CAN bitovnog vremena. Unutarnje brojilo bilježi se na točki uzorkovanja na bitu početka okvira u slanju i primanju.
+U ovom načinu unutarnje brojilo CAN sklopovlja se aktivira i koristi za generiranje vrijednosti vremenske oznake pohranjene u registrima CAN\_RDTxR/CAN\_TDTxT (za Rx i Tx \textit{mailbox} strukture). Unutarnje brojilo se poveća za jedan nakon isteka svakog CAN bitovnog vremena. Unutarnje brojilo bilježi se na točki uzorkovanja na bitu početka okvira u slanju i primanju.
 
 \paragraph{Primanje poruke}
 
-Za prijem CAN poruke na raspolaganju su tri poštanska sandučića posložena u FIFO strukturu. Kako bi se smanjila opterećenost procesora, pojednostavnila programska podrška i zagarantirala dosljednost podataka, FIFO strukturom upravlja sklopovlje. Aplikacija pristupa porukama koje su pohranjene u FIFO strukturama kroz izlazni FIFO poštanski sandučić.
+Za prijem CAN poruke na raspolaganju su tri \textit{mailbox} strukture posložene u FIFO strukturu. Kako bi se smanjila opterećenost procesora, pojednostavnila programska podrška i zagarantirala dosljednost podataka, FIFO strukturom upravlja sklopovlje. Aplikacija pristupa porukama koje su pohranjene u FIFO strukturama kroz izlazne FIFO \textit{mailbox} strukture.
 
 Primljena poruka smatra se ispravnom kada se primi na ispravan način opisan CAN protokolom (nema greške do pretposljednjeg bita EOF polja) i kada uspješno prođe kroz filtriranje identifikatora.
 
@@ -617,7 +618,7 @@ Primljena poruka smatra se ispravnom kada se primi na ispravan način opisan CAN
 	\caption{Stanja prijemnih FIFO strukuta \cite{l471_manual}}
 	\label{fig:receive_fifo_states}
 \end{figure}
-Upravljanje FIFO strukturom ilustrirano je slikom \ref{fig:receive_fifo_states}. Počevši od praznog stanja \engl{empty}, prva primljena ispravna poruka se sprema u FIFO strukturu koja prelazi u \textit{pending\_1} stanje. Sklopovlje signalizira taj događaj postavljanjem bitova FMP[1:0] u CAN\_RFR registru na vrijednost 01b. Poruka postaje dostupna u izlaznom FIFO sandučiću. Programska podrška pročita sadržaj sandučića te ga otpušta postavljanjem RFOM bita u CAN\_RFR registru, te FIFO struktura ponovno postane prazna. Ako je, u međuvremenu, primljena još jedna ispravna poruka FIFO struktura ostaje u \textit{pending\_1} stanju i nova poruka je dostupna u izlaznom FIFO sandučiću. Ako aplikacija ne otpusti sandučić, sljedeća ispravna poruka se sprema u FIFO strukturu te se ulazi u \textit{pending\_2} stanje(FMP[1:0]=10b). Proces pohrane se ponavlja za sljedeću ispravnu poruku te FIFO ulazi u \textit{pending\_3} stanje (FMP[1:0]=11b). U ovom trenutku programska podrška mora otpustiti sandučić postavljanjem RFOM bita, kako bi sandučić bio dostupan za pohranu sljedeće ispravne poruke, u suprotnom sljedeća ispravna poruka uzrokuje gubitak poruke.
+Upravljanje FIFO strukturom ilustrirano je slikom \ref{fig:receive_fifo_states}. Počevši od praznog stanja \engl{empty}, prva primljena ispravna poruka se sprema u FIFO strukturu koja prelazi u \textit{pending\_1} stanje. Sklopovlje signalizira taj događaj postavljanjem bitova FMP[1:0] u CAN\_RFR registru na vrijednost 01b. Poruka postaje dostupna u izlaznoj FIFO \textit{mailbox} strukturi. Programska podrška pročita sadržaj \textit{mailbox} te ju otpušta postavljanjem RFOM bita u CAN\_RFR registru, te FIFO struktura ponovno postane prazna. Ako je, u međuvremenu, primljena još jedna ispravna poruka FIFO struktura ostaje u \textit{pending\_1} stanju i nova poruka je dostupna u izlaznoj FIFO \textit{mailbox} strukturi. Ako aplikacija ne otpusti \textit{mailbox} strukturu, sljedeća ispravna poruka se sprema u FIFO strukturu te se ulazi u \textit{pending\_2} stanje(FMP[1:0]=10b). Proces pohrane se ponavlja za sljedeću ispravnu poruku te FIFO ulazi u \textit{pending\_3} stanje (FMP[1:0]=11b). U ovom trenutku programska podrška mora otpustiti \textit{mailbox} strukturu postavljanjem RFOM bita, kako bi struktura bila dostupna za pohranu sljedeće ispravne poruke, u suprotnom sljedeća ispravna poruka uzrokuje gubitak poruke.
 
 Kada je FIFO struktura u \textit{pending\_3} stanju, sljedeća ispravna poruka dovodi do prekoračenja i poruka se gubi. Sklopovlje signalizira prekoračenje postavljanjem FOVR bita u CAN\_RFR registru. Koja se poruka točno gubi ovisi o konfiguraciji FIFO strukture:
 \begin{itemize}

@@ -1,18 +1,18 @@
 \chapter{Programska podrška}
 
-Prilikom razvoja programske podrške korišteno je integrirano razvojno okruženje STM32CubeIDE, PDH sustav i programator ST-LINK/V2. Programska potpora razvijena je u jeziku C uz korištenje GCC prevodioca.
+Prilikom razvoja programske podrške korišteno je integrirano razvojno okruženje \\ STM32CubeIDE, PDH sustav i programator ST-LINK/V2. Programska potpora razvijena je u jeziku C uz korištenje GCC prevodioca.
 
 \section{Korišteni programski paketi i biblioteke}
 
-Razvojno okruženje STM32CubeIDE nudi mogućnost grafičkog podešavanja parametara periferija i automatsko generiranje koda, čime su olakšane inicijalizacije raznih perifernih sklopova. Prije generiranja koda moguće je odabrati hoće li se koristiti HAL \engl(Hardware Abstraction Layer) ili LL \engl{Low-Layer} biblioteke.
+Razvojno okruženje STM32CubeIDE nudi mogućnost grafičkog podešavanja parametara periferija i automatsko generiranje koda, čime su olakšane inicijalizacije raznih perifernih sklopova. Prije generiranja koda moguće je odabrati hoće li se koristiti HAL \engl{Hardware Abstraction Layer} ili LL \engl{Low-Layer} biblioteke.
 
-HAL biblioteke nude visoku razinu abstrakcije i lakše su za koristiti, međutim, one rade po principu "crne kutije", te ih stoga korisnik teže razumije. HAL funkcije također zauzimaju više radne memorije od LL funkcije jer u sebi sadržavaju kojekakve provjere vrijednosti i modifikacije unutarnjih HAL struktura, pa time nisu osigurane optimalne performanse.
+HAL biblioteke nude visoku razinu abstrakcije i lakše su za koristiti, međutim, one rade po principu ,,crne kutije'', te ih stoga korisnik teže razumije. HAL biblioteke također zauzimaju više radne memorije od LL biblioteka jer u sebi sadržavaju kojekakve provjere vrijednosti i modifikacije unutarnjih HAL struktura, pa time nisu osigurane optimalne performanse.
 
-Iz tog razloga odlučeno je da će se koristiti LL biblioteke. LL funkcije omogućuju izravan pristup registrima periferija i korisnik ih daleko jednostavnije razumije, s obzirom na to da se često sastoje od samo jedne linije koda.
+Iz tog razloga odlučeno je da će se koristiti LL biblioteke. LL biblioteke omogućuju izravan pristup registrima periferija i korisnik ih daleko jednostavnije razumije, s obzirom na to da se često sastoje od samo jedne linije koda.
 
 \section{Programska potpora za kameru}
 
-Za rad s kamerom razvijene su korisničke funkcije prikazane u isječku \ref{lst:arducam_code}.
+Za rad s kamerom razvijene su korisničke funkcije prikazane u isječku koda \ref{lst:arducam_code}.
 
 \begin{lstlisting}[caption=Korisničke funkcije za Arducam 5MP Mini Plus, label={lst:arducam_code}]
 uint8_t ACAM_TestComms(void);
@@ -36,7 +36,7 @@ uint8_t ACAM_is_cap_complete(void)
 void ACAM_set_gain(uint8_t gain);
 \end{lstlisting}
 
-\noindent Za testiranje SPI i I\textsuperscript{2}C komunikacija između mikrokontrolera i kamere postoji funkcija \verb|ACAM_TestComms()|, za odabir između RAW i JPEG formata slike na raspolaganju su funkcije \verb|ACAM_select_RAW()| i \verb|ACAM_select_JPEG()|. Način upravljanja ekspozicijom odabire se funkcijama \verb|ACAM_exp_gain_manual()| i \verb|ACAM_exp_gain_auto()|, a ukoliko se odabere ručni način upravljanja ekspozicijom parametri vremena ekspozicije i pojačanja pojačala se podešavaju funkcijama \verb|ACAM_set_exposure()| i \verb|ACAM_set_gain()|. Komanda za početak slikanja se šalje funkcijom \verb|ACAM_start_capture()|, a provjera završetka slikanja se obavlja funkcijom \verb|ACAM_is_cap_complete()|. Navedene funkcije nije trebalo mijenjati u odnosu na prethodnu programsku podršku, pa one rade na isti način kao i u prethodnom radu \cite{diplomski_goran_petrak}. Funkcije koje direktno rade sa SPI i I\textsuperscript{2}C periferijom su jedine mijenjane s obzirom na to da se rad periferija između prethodno korištenog i trenutačno korištenog mikrokontrolera razlikuju, kako je i pokazano u poglavlju 3. U nastavku će biti istaknute razlike između starih i novih funkcija kao i obrazloženje radi čega je došlo do promjena.
+\noindent Za testiranje SPI i I\textsuperscript{2}C komunikacije između mikrokontrolera i kamere postoji funkcija \verb|ACAM_TestComms()|, za odabir između RAW i JPEG formata slike na raspolaganju su funkcije \verb|ACAM_select_RAW()| i \verb|ACAM_select_JPEG()|. Način upravljanja ekspozicijom odabire se funkcijama \verb|ACAM_exp_gain_manual()| i \\ \verb|ACAM_exp_gain_auto()|, a ukoliko se odabere ručni način upravljanja ekspozicijom parametri vremena ekspozicije i pojačanja pojačala se podešavaju funkcijama \verb|ACAM_set_exposure()| i \verb|ACAM_set_gain()|. Komanda za početak slikanja se šalje funkcijom \\ \verb|ACAM_start_capture()|, a provjera završetka slikanja se obavlja funkcijom \\ \verb|ACAM_is_cap_complete()|. Navedene funkcije nije trebalo mijenjati u odnosu na prethodnu programsku podršku, pa one rade na isti način kao i u prethodnom radu \cite{diplomski_goran_petrak}. Funkcije koje direktno rade sa SPI i I\textsuperscript{2}C periferijom su jedine mijenjane s obzirom na to da se rad periferija između prethodno korištenog i trenutačno korištenog mikrokontrolera razlikuju, kako je i pokazano u poglavlju 3. U nastavku će biti istaknute razlike između starih i novih funkcija kao i obrazloženje radi čega je došlo do promjena.
 
 \subsection{Funkcije za rad sa I\textsuperscript{2}C periferijom}
 
@@ -78,15 +78,20 @@ Do razlike, međutim, dolazi u funkciji \verb| ACAM_spi_read_package()|, jer ta 
 #define ACAM_DMAn	DMA1
 \end{lstlisting}
 
-Konačno, trebalo je izbrisati funkcije koje se bave prekidima koji ne postoje na trenutačnom mikrokontroleru i prilagoditi prekidne funkcije da rade s prekidima kanala 4 i 5. Na primjer, kod STM32L471VGT6 mikrokontrolera ne postoje DMEIF i FEIF zastavice, pa je funkcije \verb|LL_DMA_ClearFlag_DMEx()| i \verb|LL_DMA_ClearFlag_FEx()| jednostavno bilo potrebno izbrisati (x u nazivu funkcije može biti 3 ili 4, što predstavlja broj toka). Funkcije koje rade s HT, TC i TE \verb|LL_DMA_ClearFlag_HTx()|, \verb|LL_DMA_ClearFlag_TCx()| i \verb|LL_DMA_ClearFlag_TEx()| prekidima je trebalo promijeniti da rade s brojem kanala koji se koriste, a to znači promijeniti x u 4 ili 5, što predstavlja broj kanala.
+Konačno, trebalo je izbrisati funkcije koje se bave prekidima koji ne postoje na trenutačnom mikrokontroleru i prilagoditi prekidne funkcije da rade s prekidima kanala 4 i 5. Na primjer, kod STM32L471VGT6 mikrokontrolera ne postoje DMEIF i FEIF zastavice, pa je funkcije \verb|LL_DMA_ClearFlag_DMEx()| i \\ \verb|LL_DMA_ClearFlag_FEx()| jednostavno bilo potrebno izbrisati (x u nazivu funkcije može biti 3 ili 4, što predstavlja broj toka). Funkcije koje rade s HT, TC i TE prekidima, na primjer \verb|LL_DMA_ClearFlag_HTx()|, \verb|LL_DMA_ClearFlag_TCx()| i \\ \verb|LL_DMA_ClearFlag_TEx()|, je trebalo promijeniti da rade s brojem kanala koji se koriste, a to znači promijeniti x u 4 ili 5, što predstavlja broj kanala.
 
 Na taj je način postojeća programska podrška prethodnog mikrokokontrolera za kameru prilagođena za trenutačni mikrokontroler.
 
 \section{Programska potpora za \textit{flash} memoriju}
 
+Za rad s \textit{flash} memorijom razvijene su korisničke funkcije prikazane u isječku \ref{lst:flash_code}
+
+\begin{lstlisting}[caption=Korisničke funkcije za \textit{flash} memoriju, label={lst:flash_code}]
+\end{lstlisting}
+
 \section{Učitavanje programa}
 
-Kako bi se programska podrška mogla učitati na mikrokontroler PDH sustava nužno je koristiti programator, u ovom slučaju ST-LINK/V2. Na raspolaganju je STM32F4DISCOVERY razvojni sustav koji ima ugrađen ST-LINK/V2 programator. Programator na razvojnom sustavu se može koristiti za programiranje mikrokontrolera na razvojnom sustavu ili programiranje mikrokontrolera na vanjskoj pločici. Koji mikrokontroler programator programira određuju prespojnici CN3 na razvojnom sustavu:
+Kako bi se programska podrška mogla učitati na mikrokontroler PDH sustava nužno je koristiti programator, u ovom slučaju ST-LINK/V2. Na raspolaganju je \\ STM32F4DISCOVERY razvojni sustav koji ima ugrađen ST-LINK/V2 programator. Programator na razvojnom sustavu se može koristiti za programiranje mikrokontrolera na razvojnom sustavu ili programiranje mikrokontrolera na vanjskoj pločici. Koji mikrokontroler programator programira određuju prespojnici CN3 na razvojnom sustavu:
 \begin{itemize}
 	\item ako su oba prespojnika spojena, programira se mikrokontroler na razvojnom sustavu,
 	\item ako su oba prespojnika odspojena, programira se mikrokontroler na vanjskoj pločici.
