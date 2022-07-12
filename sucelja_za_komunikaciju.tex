@@ -626,11 +626,50 @@ Kada je FIFO struktura u \textit{pending\_3} stanju, sljedeća ispravna poruka d
 	\item ako je funkcija zaključivanja FIFO strukture uključena (RFLM bit u CAN\_MCR registru je postavljen u jedinicu) najnovija poruka se odbacuje i programska podrška ima pristup trima najstarijim porukama.
 \end{itemize}
 
-Jednom kada se poruka pohrani u FIFO strukturu, ažuriraju se bitovi FMP[1:0] i generira se zahtjev za prekidom, pod uvijetom da je FMPIE bit u CAN\_IER registru postavljen u visoku logičku razinu. Kada FIFO struktura postane puna FULL bit u CAN\_RFR registru se postavlja u visoku logiču razinu i generira se zahtjev za prekid, pod uvijetom da je FFIE bit u CAN\_IER registru postavljen u jedinicu. Ako je FOVR bit u CAN\_IER registru postavljen u jedinicu, generira se zahtijev za prekidom svaki put kada se dogodi prekoračenje.
+Jednom kada se poruka pohrani u FIFO strukturu, ažuriraju se bitovi FMP[1:0] i generira se zahtjev za prekidom, pod uvijetom da je FMPIE bit u CAN\_IER registru postavljen u visoku logičku razinu. Kada FIFO struktura postane puna FULL bit u CAN\_RFR registru se postavlja u visoku logičku razinu i generira se zahtjev za prekid, pod uvijetom da je FFIE bit u CAN\_IER registru postavljen u jedinicu. Ako je FOVR bit u CAN\_IER registru postavljen u jedinicu, generira se zahtijev za prekidom svaki put kada se dogodi prekoračenje.
 
 \paragraph{Filtriranje identifikatora}
 
-U CAN protokolu identifikator poruke nije povezan sa adresom čvora nego je povezan sa sadržajem poruke. Posljedično, odašiljač šalje svoju poruku svim čvorovima.
+U CAN protokolu identifikator poruke nije povezan s adresom čvora nego je povezan sa sadržajem poruke. Posljedično, odašiljač šalje svoju poruku svim čvorovima. Na primitak poruke čvor odlučuje da li mu je poruka potrebna ili ne, ovisno o vrijednosti identifikatora. Ako je poruka potrebna kopira se u SRAM, a ako nije onda se odbacuje bez intervencije programske podrške. Kako bi se ispunio ovaj zahtjev, na raspolaganju su 14 podesivih i skalabilnih banaka filtera. Svaka banka filtera se sastoji od da 32-bitna registra, CAN\_FxR0 i CAN\_FxR1.
+
+Kako bi se filteri optimizirali i prilagodili prema potrebama aplikacije, svaka banka filtera se može neovisno skalirati. Ovisno o skali filtera, banka filtera pruža:
+\begin{itemize}
+	\item jedan 32-bitni filter za STDIT[10:0], EXTID[17:0], IDE i RTR bitove,
+	\item dva 16-bitna filtra za STDIT[10:0], RTR, IDE i EXTID[17:15].
+\end{itemize}
+\noindent Filteri mogu biti podešeni tako da rade u maskiranom načinu rada ili u načinu rada s popisom identifikatora. U maskiranom načinu rada identifikatorski registri su povezani s registrima maske koja određuje koji bitovi identifikatora se moraju podudarati \engl{must match} ili koji nisu bitni \engl{don't care}. U načinu rada s popisom identifikatora registri maske se koriste kao identifikatorski registri. Tako umjesto da se definira identifikator i maska, definiraju se dva identifikatora. Svi se bitovi nadolazećeg identifikatora moraju podudarati s bitovima specificiranim u registrima filtra.
+
+Banke filtera se podešavaju preko odgovarajućeg CAN\_FMR registra. Kako bi se podesila banka filtera, prvo se mora deaktivirati banka čišćenjem FACT bita u CAN\_FAR registru. Skala filtera se podešava preko odgovarajućeg FSCx bita u CAN\_FS1R registru. Način rada za odgovarajuće registre maske ili identifikatorske registre se podešava preko FBMx bita u CAN\_FMR registru.
+
+Jednom kada FIFO struktura primi poruku, ona je dostupna aplikaciji. Aplikacijski podaci se obično kopiraju u neku lokaciju u SRAM memoriji. Kako bi se podatak kopirao na pravu lokaciju, aplikacija mora identificirati podatak uz pomoć identifikatora. Kako bi se to izbjeglo i olakšalo pristup lokacijama u SRAM memoriji, CAN kontroler pruža indeks podudaranja filtra. Indeks se pohranjuje u \textit{mailbox} strukturu zajedno sa porukom prema pravilima prioriteta filtra. Tako svaka primljena poruka ima pridružen indeks podudaranja filtra. Index podudaranja filtra se može iskoristiti na dva načina:
+\begin{itemize}
+	\item uspoređivanje indeksa s popisom očekivanih vrijednosti,
+	\item korištenje indeksa na nizu za pristup lokaciji podatka.
+\end{itemize}
+Za nemaskirane filtre programska podrška ne treba uspoređivati identifikator. Ako je filter maskiran programska podrška smanjuje uspoređivanje samo na maskirane bitove.
+
+Pravila prioriteta filtra.
+
+Ovisno o kombinaciji filtra može se dogoditi da identifikator prođe uspješno kroz nekoliko filtera. U ovom slučaju vrijednost podudaranja filtra pohranjena u primajućoj \textit{mailbox} strukturi se odabire prema sljedećim pravilima prioriteta:
+\begin{itemize}
+	\item 32-bitni filtar ima veći prioritet od 16-bitnog filtra,
+	\item za filtre jednake skale, prioritet se daje filtru s načinom rada s popisom identifikatora, a ne filtru s maskiranim načinom rada,
+	\item za filtre s istom skalom i načinom rada, prioritet se određuje prema broju filtra (manji broj, veći prioritet).
+\end{itemize}
+
+\paragraph{Pohrana poruke}
+
+Sučelje između programske podrške i sklopovlja za CAN poruke je implementirano preko \textit{mailbox} struktura. \textit{Mailbox} struktura sadržava sve informacije povezane s porukom; informacije o identifikatoru, podacima, kontroli, statusu i vremenskoj oznaci.
+
+Programska podrška sastavlja poruku koja se treba poslati u praznoj \textit{mailbox} strukturi. Status odašiljanja naznačuje sklopovlje u CAN\_TSR registru.
+
+Kada se poruka primi, ona je dostupna programskoj podršci u FIFO izlaznoj \textit{mailbox} strukturi. Kada programska podrška pročita poruku, programska podrška mora otpustiti \textit{mailbox} strukturu preko RFOM bita u CAN\_RFR registru kako bi sljedeća nadolazeća poruka bila dostupna. Indeks podudaranja filtera se pohranjuje u MFMI polju u CAN\_RDTxR registru. 16-bitna vrijednost vremenske oznake se pohranjuje u TIME[15:0] polju u CAN\_RDTxR registru.
+
+\paragraph{Upravljanje pogreškama}
+
+Upravljanje pogreškama kao što je opisano u CAN protokolu odrađuje sklopovlje koristeći brojač odašiljačkih pogrešaka (engl. \textit{Transmit Error Counter}, TEC vrijednost u CAN\_ESR registru) i brojač prijamničkih pogrešaka (engl. Receive Error Counter, REC vrijednost u CAN\_ESR registru) koji se inkrementiraju ili dekrementiraju ovisno o stanju pogreške. Obje vrijednosti se mogu pročitati kako bi se ustanovila stabilnost mreže. Nadalje, CAN sklopovlje pruža detaljne informacije o trenutačnom statusu greške u CAN\_ESR registru. Preko CAN\_IER registra programska podrška može podesiti stvaranje prekida na detekciju pogreške.
+
+Kada je vrijednost TEC polja veća od 255 dolazi do \textit{Bus-Off} stanja koje je naznačeno preko BOFF bita u CAN\_ESR polju. U \textit{Bus-Off} stanju bxCAN periferija više ne može slati i primati poruke. Ovisno o ABOM bitu u CAN\_MCR registru, bxCAN se oporavi od \textit{Bus-Off} stanja automatski ili na zahtjev programske podrške. U oba slučaja bxCAN mora čekati redoslijed oporavka specificiran u CAN standardu (128 pojava 11 uzastopnih recesivnih bitova na CANRX liniji).
 
 \begin{table}[H]
 	\caption{Registri CAN periferije kod STM32L471VGT6 mikrokontrolera \citep[poglavlje 46]{l471_manual}}

@@ -40,7 +40,7 @@ void ACAM_set_gain(uint8_t gain);
 
 \subsection{Funkcije za rad sa I\textsuperscript{2}C periferijom}
 
-Funkcije za rad s I\textsuperscript{2}C periferijom navedene su u isječku \ref{lst:acam_i2c_functions}.
+Funkcije za rad s I\textsuperscript{2}C periferijom navedene su u isječku koda \ref{lst:acam_i2c_functions}.
 
 \begin{lstlisting}[caption=Funkcije za rad s I\textsuperscript{2}C periferijom, label={lst:acam_i2c_functions}]
 void ACAM_I2C_Setup();
@@ -55,7 +55,7 @@ Prijenos preko I\textsuperscript{2}C protokola u ovom radu funkcionira tako da s
 
 \subsection{Funkcije za rad sa SPI periferijom}
 
-Funkcije za rad s SPI periferijom navedene su u isječku \ref{lst:acam_spi_functions}.
+Funkcije za rad s SPI periferijom navedene su u isječku koda \ref{lst:acam_spi_functions}.
 
 \begin{lstlisting}[caption=Funkcije za rad s SPI periferijom, label={lst:acam_spi_functions}]
 uint8_t ACAM_SPI_Read(uint8_t reg);
@@ -65,7 +65,7 @@ void ACAM_spi_read_package(uint8_t * buff, uint16_t size);
 
 \noindent Kao što je već rečeno, SPI periferija funkcionira na isti način na oba mikrokontrolera, te stoga funkcije \verb|ACAM_SPI_Read()| i \verb|ACAM_SPI_Write()| funkcioniraju na isti način kao i u programskoj podršci za prethodni mikrokontroler.
 
-Do razlike, međutim, dolazi u funkciji \verb| ACAM_spi_read_package()|, jer ta funkcija koristi DMA prijenos, a kao što je već pokazano, DMA prijenos funkcionira drugačije na STM32L471VGT6 mikrokontroleru nego na STM32F407VGT6 mikrokontroleru. U prethodnoj programskoj podršci koristili su se takozvani tokovi kod DMA prijenosa. Na primjer, za slanje podataka preko SPI protokola pomoću DMA prijenosa koristio se tok 4, a u programskoj podršci tok 4 je označavala definicija \verb|LL_DMA_STREAM_4|. U programskoj podršci za trenutačni mikrokontroler ne postoje takve definicije za tokove, s obzirom na to da se prijenos obavlja preko takozvanih kanala. Ako se žele poslati podatci preko SPI protokola pomoću DMA prijenosa mora se koristiti kanal 5, a za primanje podataka koristi se kanal 4, a u programskoj podršci kanale 4 i 5 predstavljaju definicije \verb|LL_DMA_CHANNEL_4| i \verb|LL_DMA_CHANNEL5|. Navedene promjene bilo je jednostavno implementirati jer se koriste globalne definicije preko kojih se programskoj podršci govori koje dijelove periferije se koriste, tako da je bilo potrebno promijeniti svega nekoliko linija koda (isječak \ref{lst:global_dma_def}).
+Do razlike, međutim, dolazi u funkciji \verb| ACAM_spi_read_package()|, jer ta funkcija koristi DMA prijenos, a kao što je već pokazano, DMA prijenos funkcionira drugačije na STM32L471VGT6 mikrokontroleru nego na STM32F407VGT6 mikrokontroleru. U prethodnoj programskoj podršci koristili su se takozvani tokovi kod DMA prijenosa. Na primjer, za slanje podataka preko SPI protokola pomoću DMA prijenosa koristio se tok 4, a u programskoj podršci tok 4 je označavala definicija \verb|LL_DMA_STREAM_4|. U programskoj podršci za trenutačni mikrokontroler ne postoje takve definicije za tokove, s obzirom na to da se prijenos obavlja preko takozvanih kanala. Ako se žele poslati podatci preko SPI protokola pomoću DMA prijenosa mora se koristiti kanal 5, a za primanje podataka koristi se kanal 4, a u programskoj podršci kanale 4 i 5 predstavljaju definicije \verb|LL_DMA_CHANNEL_4| i \verb|LL_DMA_CHANNEL5|. Navedene promjene bilo je jednostavno implementirati jer se koriste globalne definicije preko kojih se programskoj podršci govori koje dijelove periferije se koriste, tako da je bilo potrebno promijeniti svega nekoliko linija koda (isječak koda \ref{lst:global_dma_def}).
 \begin{lstlisting}[caption=Zaglavlje dma.h datoteke u kojima se definira koji dijelovi periferija se koriste, label={lst:global_dma_def}]
 #define ACAM_SPIn	SPI2
 
@@ -78,15 +78,54 @@ Do razlike, međutim, dolazi u funkciji \verb| ACAM_spi_read_package()|, jer ta 
 #define ACAM_DMAn	DMA1
 \end{lstlisting}
 
-Konačno, trebalo je izbrisati funkcije koje se bave prekidima koji ne postoje na trenutačnom mikrokontroleru i prilagoditi prekidne funkcije da rade s prekidima kanala 4 i 5. Na primjer, kod STM32L471VGT6 mikrokontrolera ne postoje DMEIF i FEIF zastavice, pa je funkcije \verb|LL_DMA_ClearFlag_DMEx()| i \\ \verb|LL_DMA_ClearFlag_FEx()| jednostavno bilo potrebno izbrisati (x u nazivu funkcije može biti 3 ili 4, što predstavlja broj toka). Funkcije koje rade s HT, TC i TE prekidima, na primjer \verb|LL_DMA_ClearFlag_HTx()|, \verb|LL_DMA_ClearFlag_TCx()| i \\ \verb|LL_DMA_ClearFlag_TEx()|, je trebalo promijeniti da rade s brojem kanala koji se koriste, a to znači promijeniti x u 4 ili 5, što predstavlja broj kanala.
+Konačno, trebalo je izbrisati funkcije koje se bave prekidima koji ne postoje na trenutačnom mikrokontroleru i prilagoditi prekidne funkcije da rade s prekidima kanala 4 i 5. Na primjer, kod STM32L471VGT6 mikrokontrolera ne postoje DMEIF i FEIF zastavice, pa je, na primjer, funkcije \verb|LL_DMA_ClearFlag_DMEx()| i \\ \verb|LL_DMA_ClearFlag_FEx()| jednostavno bilo potrebno izbrisati (x u nazivu funkcije može biti 3 ili 4, što predstavlja broj toka). Funkcije koje rade s HT, TC i TE prekidima, na primjer \verb|LL_DMA_ClearFlag_HTx()|, \verb|LL_DMA_ClearFlag_TCx()| i \\ \verb|LL_DMA_ClearFlag_TEx()|, je trebalo promijeniti da rade s brojem kanala koji se koriste, a to znači promijeniti x u 4 ili 5, što predstavlja broj kanala. Na isti način modificirane su druge funkcije koje rade s prekidima kanala
 
 Na taj je način postojeća programska podrška prethodnog mikrokokontrolera za kameru prilagođena za trenutačni mikrokontroler.
 
 \section{Programska potpora za \textit{flash} memoriju}
 
-Za rad s \textit{flash} memorijom razvijene su korisničke funkcije prikazane u isječku \ref{lst:flash_code}
+\subsection{Funkcije za rad s \textit{flash} memorijom}
+
+Za rad s \textit{flash} memorijom razvijene su korisničke funkcije prikazane u isječku koda \ref{lst:flash_code}.
 
 \begin{lstlisting}[caption=Korisničke funkcije za \textit{flash} memoriju, label={lst:flash_code}]
+uint8_t W25N_init(void);
+uint8_t W25N_block_erase(uint16_t block_nr);
+uint8_t W25N_page_data_read(uint16_t page_addr);
+uint8_t W25N_read_data(uint16_t col_addr, uint8_t * data, uint16_t nr_bytes);
+uint8_t W25N_prog_data_load(uint16_t col_addr, uint8_t * data, uint16_t nr_bytes);
+uint8_t W25N_rand_prog_data_load(uint16_t col_addr, uint8_t * data, uint16_t nr_bytes);
+uint8_t W25N_prog_execute(uint16_t page_addr);
+\end{lstlisting}
+
+\noindent Inicijalizacija perifernih jedinica potrebnih za rad s \textit{flash} memorijom, provjera ispravnosti SPI komunikacije izvršava se funkcijom \verb|W25N_init()|. Brisanje bloka izvršava se funkcijom \verb|W25N_block_erase()|. Prebacivanje odabrane stranice u međuspremnik \textit{flash} memorije izvodi se pomoću funkcije \verb|W25N_page_data_read()|, a nakon toga željeni niz okteta se može pročitati funkcijom \verb|W25N__read_data()|. Funkcijama \verb|W25N_prog_data_load()| i \verb|W25N_rand_prog_data_load()| izvodi se upisivanje u međuspremnik. Funkcija \verb|W25N_prog_execute()| upisuje podatke iz međuspremnika u stranicu u memoriji.
+
+Funkcije koje još rade sa \textit{flash} memorijom su one koje upravljaju neispravnim blokovima (isječak koda \ref{lst:block_man}).
+
+\begin{lstlisting}[caption=Funkcije za upravljanje neispravnim blokovima, label={lst:block_man}]
+void W25N_scan_factory_BB(uint32_t * BBBT);
+void W25N_bb_manage(uint16_t lba, uint16_t pba);
+void W25N_read_bbm_lut(uint8_t * container);
+\end{lstlisting}
+
+\noindent Funkcija \verb|W25N_scan_factory_BB()| skenira blokove u tablici bitova i označuje one koji su tvornički neispravni, a tablica bitova koju treba skenirati dobiva preko pokazivača \verb|BBBT|. Funkcija \verb|W25N_bb_manage()| omogućuje specificiranje zamjenskog bloka za blok koji je uočen kao neispravan. Funkcijom \verb|W25N_read_bbm_lut()| se iščitava prozivna tablica (LUT), čime se dobivaju adrese neispravnih i zamjenskih blokova.
+
+Zajedničko svim prethodnim funkcijama je korištenje funkcije prikazane u isječku koda \ref{lst:flash_execute}.
+
+\begin{lstlisting}[caption=Funkcija za izvođenje instrukcije na \textit{flash} memoriji, label={lst:flash_execute}]
+void W25N_instruction_execute( W25N_instruction_nr instr, uint8_t *params, uint8_t *data_or_rbs, uint32_t nr_data_bytes);
+\end{lstlisting}
+
+\noindent Funkcija \verb|W25N_instruction_execute()| se izvršavaju instrukcije na \text{flash} memoriji i ona radi direktno s registrima SPI periferije. U ovoj funkciji su jedino nastajali problemi, a greška se događala kod upisa u podatkovni registar SPI periferiji. Na primjer, ako se želi poslati neki podatak preko SPI protokola, željeni podatak potrebno je upisati u registar SPI2\_DR, a način na koji se je to radilo u prethodnoj programskoj prikazan je u isječku koda \ref{lst:spi_dr_old}.
+
+\begin{lstlisting}[caption=Upis podatka u SPI2\_DR registar, label={lst:spi_dr_old}]
+W25N_SPIn->DR = 0x69;
+\end{lstlisting}
+
+\noindent Naime, SPI komunikacija u ovom projektu radi s 8-bitnim podatcima, međutim, promatranjem linije kroz osciloskop, primijećeno je da se šalje 16-bitni podatak, s tim da se traženi podatak nalazi u gornja dva bajta. Ovaj problem riješen je korištenjem odgovarajuće LL funkcije, a u slučaju slanja podatka, primjer u isječku koda \ref{lst:spi_dr_old} prikazan je na ispravno napisan način u isječku koda \ref{lst:spi_dr_new}.
+
+\begin{lstlisting}[caption=Ispravan upis podatka u SPI2\_DR registar, lable={lst:spi_dr_new}]
+LL_SPI_TransmitData8(SPI2_DR, 0x69);
 \end{lstlisting}
 
 \section{Učitavanje programa}
