@@ -84,7 +84,7 @@ Na taj je način postojeća programska podrška prethodnog mikrokokontrolera za 
 
 \section{Programska potpora za \textit{flash} memoriju}
 
-\subsection{Funkcije za rad s \textit{flash} memorijom}
+%\subsection{Funkcije za rad s \textit{flash} memorijom}
 
 Za rad s \textit{flash} memorijom razvijene su korisničke funkcije prikazane u isječku koda \ref{lst:flash_code}.
 
@@ -130,7 +130,71 @@ LL_SPI_TransmitData8(SPI1, 0x69);
 
 \section{Integracija s operacijskim sustavom FreeRTOS}
 
-\section{CAN sučelje}
+Za povezivanje razvijene programske potpore i ostvarivanja višezadaćnosti korišten je operacijski sustav za rad u stvarnom vremenu FreeRTOS. Razvijeni su zadaci \textit{Camera Task} za upravljanje kamerom i \textit{XBand \& MemMang Task} za upravljanje memorijom i slanjem podataka preko USART sučelja na računalo u svrhu demonstracije. \textit{Interpreter task} zadatak služi za upravljanje ostalim zadacima. Preko \textit{Interpreter} zadatka zadaju se parametri koje će koristiti kamera (vrijeme ekspozicije, pojačanje i format) kao imena datoteka u koje će se spremiti slika (imena imaju nazive brojeva u intervalu od 0 do 1023). Preko \textit{Interpreter} zadatka se također može odabrati datoteka za slanje preko USART sučelja, a željena datoteka se može i izbrisati. Također, ako je došlo do nekakvih problema, moguće je ponovno inicijalizirati datotečni sustav \textit{flash} memorije.
+Prikaz zadataka u obliku blok dijagrama prikazan je na slici \ref{fig:tasks}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{damn_rtos.png}
+	\caption{Zadaci u operacijskom sustavu PDH računala}
+	\label{fig:tasks}
+\end{figure}
+
+\noindent Dio programa koji uzima i sprema sliku, kao i dio programa koji šalje podatke na USART sučelje, predstavljaju kritične sekcije, jer bi njihovo prekidanje moglo dovesti do grešaka pri upravljanju s podacima.
+
+\section{Programska podrška za CAN komunikaciju}
+
+S obzirom na neispravnost sklopa za CAN komunikaciju na tiskanoj pločici PDH sustava, programska podrška za CAN sučelje nije razvijena. Ipak, u ovom poglavlju dat će se pregled funkcija koje će se najčešće koristiti jednom kada se programska podrška počne razvijati. Za razliku od ostalih sučelja na STM32L471VGT6 mikrokontroleru ne postoje LL biblioteke koje rukuju CAN periferijom, pa će se stoga koristiti HAL biblioteke.
+
+\subsection{Inicijalizacija}
+
+Konfiguracija CAN periferije može se izvesti korištenjem generatora koda u \\STM32CubeIDE razvojnom okruženju, a prikaz osnovne konfiguracije prikazan je na slici \ref{fig:can_config}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{can_config.png}
+	\caption{Konfiguracija CAN periferije}
+	\label{fig:can_config}
+\end{figure}
+
+\noindent Generator koda će napraviti kod za inicijalizaciju CAN periferije implementiranjem \verb|HAL_CAN_MspInit()| funkcije, u kojoj se omogućuje takt za CAN sučelje, podešavaju se stezaljke koje će CAN koristiti i omogućit će i podesiti prioritete prekida. CAN periferija će se inicijalizirati preko \verb|HAL_CAN_Init()| funkcije koja koristi \verb|HAL_CAN_MspInit()| funkciju za \textit{low-level} inicijalizaciju.
+
+Generator koda ne nudi opciju konfiguracije filtra, pa stoga korisnik mora sam implementirati funkciju za konfiguraciju filtra \verb|HAL_CAN_ConfigFilter()|, čiji je prototip dan u isječku koda \ref{lst:filter_config_prototype}.
+
+\begin{lstlisting}[caption=Prototip funkcije HAL\_CAN\_ConfigFilter(), label={fig:filter_config_prototype}]
+HAL_StatusTypeDef HAL_CAN_ConfigFilter(CAN_HandleTypeDef *hcan, const CAN_FilterTypeDef *sFilterConfig)
+\end{lstlisting} 
+
+\noindent Funkcija prima pokazivač na strukturu \verb|*sFilterConfig|, koja sadržava željene parametre filtra. Kako bi se filter podesio, korisnik prvo treba napraviti strukturu tipa \verb|CAN_FilterTypeDef| koja sadržava sve potrebne parametre filtra (isječak koda \ref{lst:can_filtertypedef}).
+
+\begin{lstlisting}[caption=CAN\_FilterTypeDef struktura, label={lst:can_filtertypedef}]
+typedef struct
+{
+  uint32_t StdId;
+  uint32_t ExtId;
+  uint32_t IDE;
+  uint32_t RTR;
+  uint32_t DLC;
+  FunctionalState TransmitGlobalTime;
+
+} CAN_TxHeaderTypeDef;
+\end{lstlisting}
+
+\noindent Kada se napravi inicijalizacija, CAN modul se uključuje \verb|HAL_CAN_Start()| funkcijom. Čvor je sada aktivan na sabirnici i može primati i slati poruke.
+
+\subsection{Korištenje}
+
+Slanjem poruka se upravlja sljedećim funkcijama:
+\begin{itemize}
+	\item \verb|HAL_CAN_AddTxMessage()| - zahtjev za slanjem nove poruke,
+	\item \verb|HAL_CAN_AbortTxRequest()| - zahtjev za prekidom poruke u tijeku slanja,
+	\item \verb|HAL_CAN_GetTxMailboxesFreeLevel()| - vraća broj slobodnih odašiljačkih \textit{mailbox} struktura,
+	\item \verb|HAL_CAN_IsTxMessagePending()| - provjerava da li je poruka u tijeku slanja
+	\item \verb|HAL_CAN_GetTxTimestamp()| - vraća vremensku oznaku poslane poruke, u slučaju da je omogućen način rada s vremenski okinutom komunikacijom.
+\end{itemize}
+\noindent Poruka primljena u FIFO strukturi se može pročitati \verb|HAL_CAN_GetRxMessage()| funkcijom, broj poruka pohranjenih u FIFO strukturi se može dobiti preko funkcije \verb|HAL_CAN_GetRxFifoFillLevel()|.
+
+Primanje i slanje podataka se može izvoditi preko prekida, koji se mogu uključiti funkcijom \verb|HAL_CAN_ActivateNotification()|. CAN periferija se može prebaciti u način rada s niskom potrošnjom energije uz pomoć \verb|HAL_CAN_RequestSleep()| funkcije, a povratak u normalan način rada ostvaruje funkcija \verb|HAL_CAN_WakeUp()|.
 
 \section{Učitavanje programa}
 
