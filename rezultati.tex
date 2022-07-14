@@ -1,8 +1,17 @@
 \chapter{Rezultati}
 
-Komunikacija između osobnog računala i PDH sustava u ovom slučaju predstavlja komunikaciju između CDH računala i PDH sustava. Komunikacija se izvodi preko USART sučelja, te je stoga potreban emulator terminala koji može koristiti UART komunikaciju. U tu svrhu odabran je program CoolTerm, koji može primati i slati podatke preko UART komunikacije i može spremati rezultate komunikacije, što je potrebno kako bi se na računalu mogla učitati slika. UART komunikacija radi na brzini prijenosa podataka od 115200 i ona predstavlja slanje podataka preko XBand sustava.
+S obzirom da CDH računalo nije dostupno u trenutku pisanja ovog rada,
+komunikacija PDH računala s CDH računalom emulira se kroz komunikaciju s osobnim računalom
+putem sučelja USART.
+Na osobnom računalu potrebno je koristiti emulator terminala koji može koristiti UART komunikaciju. U tu svrhu odabran je program CoolTerm, 
+koji može primati i slati podatke preko UART sučelja i može spremati  
+primljene podatke, što je potrebno kako bi se na računalu mogla učitati slika s kamere. 
+Brzina prijenosa putem UART sučelja postavljena je na 11500 bit/s.
+Za obradu naredbi primljenih s osobnog računala korištena 
+je programska potpora razvijena u okviru prethodnog rada \cite{diplomski_goran_petrak}.
 
-Kada se sustav uključi prvo se ispisuje rezultat inicijalizacije sustava, ako je inicijalizacija dobro prošla ispisuje se poruka \verb|startup_ok|. Nakon toga nudi se izbor ponovne inicijalizacije datotečnog sustava, te se nudi izbor datoteke za slanje. Ako korisnik želi, može odmah nakon slanja datoteke odabranu datoteku izbrisati, a može i izbrisati datoteke bez prethodnog slanja. Korisnik može odabrati da se slanje datoteka preskoči. Sustav zatim traži od korisnika da koristi uobičajene, odnosne prethodne, postavke kamere ili da sam podesi postavke kamere ili da se korištenje kamere preskoči. Kada korisnik podesi sustav i odabere što želi raditi s njim, sustav ponudi korisniku pokretanje operacija PDH sustava. Kada sustav završi s izvršavanjem operacija ispisuje se rezultat operacija i status sustava, te sustav krene ispočetka i ponovno ponudi korisniku reinicijalizaciju datotečnog sustava. Primjer komunikacije između računala i PDH sustava dan je u isječku koda \ref{lst:default_comms}.
+Kada se sustav uključi prvo se ispisuje rezultat inicijalizacije sustava. Ako je inicijalizacija uspješna, ispisuje se poruka \verb|startup_ok|. Nakon toga nudi se izbor ponovne inicijalizacije datotečnog sustava, te se nudi izbor datoteke za slanje. Ako korisnik želi, može odmah nakon slanja datoteke odabranu datoteku izbrisati, a može i izbrisati datoteke bez prethodnog slanja. Korisnik može odabrati da se slanje datoteka preskoči. Sustav zatim traži od korisnika da koristi uobičajene, odnosne prethodne, postavke kamere ili da sam podesi postavke kamere ili da se korištenje kamere preskoči. Kada korisnik konfigurira postavke sustava i odabere željene funkcionalnosti,
+sustav ponudi korisniku pokretanje operacija PDH sustava. Kada sustav završi s izvršavanjem operacija ispisuje se rezultat operacija i status sustava, te sustav krene ispočetka i ponovno ponudi korisniku reinicijalizaciju datotečnog sustava. Primjer komunikacije između računala i PDH sustava dan je u isječku koda \ref{lst:default_comms}.
 
 \begin{lstlisting}[caption=Komunikacija između računala i PDH sustava, label={lst:default_comms}]
 sustav: startup_ok
@@ -49,16 +58,16 @@ slanje slike
 sustav: Type 'reinit' to reinitialize the filesystem, 'n' not to
 \end{lstlisting}
 
-Ovisno o svjetlini okoline gdje se nalazi kamera preporučuje se vrijednost parametra \verb|nr_lines| 2000 za relativno svjetlo područje i 5000 za relativno mračno područje. Za parametar \verb|nr_lines frac| se preporučuje mala vrijednost, na primjer 10. Isto tako, male vrijednosti se preporučuju za parametar \verb|gain|. Primjer slika koje su uslikane s navedenim parametrima u jpeg formatu prikazane su na slikama \ref{fig:dark} i \ref{fig:light}.
+Ovisno o svjetlini okoline gdje se nalazi kamera preporučuje se vrijednost parametra \verb|nr_lines| 2000 za relativno svjetlo područje i 5000 za relativno mračno područje. Za parametar \verb|nr_lines frac| se preporučuje mala vrijednost, na primjer 10. Isto tako, male vrijednosti se preporučuju za parametar \verb|gain|. Primjer slika koje su uslikane s navedenim parametrima u \textit{jpeg} formatu prikazane su na slikama \ref{fig:dark} i \ref{fig:light}.
 \begin{figure}[H]
 	\centering
 	\includegraphics[height=5 cm, angle=180]{light.jpeg}
-	\caption{Slika ZESOI-knjižnice u relativno svjetlim uvjetima}
+	\caption{Slika dobivena u relativno svjetlim uvjetima}
 	\label{fig:light}
 \end{figure}
 \begin{figure}[H]
 	\centering
 	\includegraphics[height=5 cm, angle=90]{dark.jpeg}
-	\caption{Slika narančastog autića u relativno mračnim uvjetima}
+	\caption{Slika dobivena u relativno mračnim uvjetima}
 	\label{fig:dark}
 \end{figure}

@@ -2,14 +2,14 @@
 
 \section{I\textsuperscript{2}C sučelje}
 
-Za konfiguraciju kamere Arducam 5MP Mini Plus  PDH računalo koristi I\textsuperscript{2}C komunikaciju. U nastavku slijedi općeniti opis I\textsuperscript{2}C protokola kao i razlike između I\textsuperscript{2}C periferijski sklopova na prethodno korištenom (STM32F407VGT6) i trenutačnom (STM32L471VGT6) mikrokontroleru.
+Za konfiguraciju kamere Arducam 5MP Mini Plus, PDH računalo koristi I\textsuperscript{2}C komunikaciju. U nastavku slijedi općeniti opis I\textsuperscript{2}C protokola kao i razlike I\textsuperscript{2}C periferijskih sklopova između prethodno i trenutno korištenog mikrokontrolera (STM32F407VGT6, odnosno STM32L471VGT6).
 
 \subsection{I\textsuperscript{2}C protokol}
 
 I\textsuperscript{2}C je jednostavna dvosmjerna sinkrona serijska sabirnica razvijena od strane \textit{Philips Semiconductors} (sada \textit{NXP Semiconductors}) 1982. godine \cite{i2c_wikipedia}. Koristi dvije linije:
 \begin{itemize}
 	\item serijska podatkovna linija (SDA, \textit{Serial Data Line}),
-	\item serijska taktna linija (SCL, \textit{Serial Clock Line}).
+	\item serijska linija signala takta (SCL, \textit{Serial Clock Line}).
 \end{itemize}
 Obje linije su pritegnute na visoku logičku razinu preko \textit{pull-up} otpornika. Moguće brzine prijenosa su:
 \begin{itemize}

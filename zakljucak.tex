@@ -1,7 +1,40 @@
 \chapter{Zaključak}
 
-U ovom projektu opisan je razvoj programske podrške za upravljanje kamerom i \textit{flash} memorijom nanosatelita CubeSat u sklopu projekta FERSAT. Kratko su opisani FERSAT projekt i dosadašnje aktivnosti u sklopu projekta. Opisana je arhitektura korisnog tereta FERSAT satelita i sklopovlje PDH sustava. Detaljno su objašnjeni I\textsuperscript{2}C, SPI i CAN protokoli i objašnjena je razlika između I\textsuperscript{2}C i SPI periferijskih sklopova prethodno korištenog (STM32F407VGT6) i novog (STM32L471VGT6) mikrokontrolera. Dan je pregled prilagodbe postojeće programske podrške za stari mikrokontroler na novi mikrokontroler i objašnjene su poteškoće do kojih je došlo kod prilagodbe. Objašnjen je način korištenja CAN periferije i dan je pregled funkcija koje će se koristiti za CAN komunikaciju. Programska potpora za upravljanje kamerom i \textit{flash} memorijom je integrira u operacijski sustav za rad u stvarnom vremenu FreeRTOS. Predstavljeni su zadaci razvijeni u FreeRTOS operacijskom sustavu kojima se ostvaruje višezadaćnost PDH sustava i objašnjena je veza između zadataka. Objašnjen je način učitavanja razvijene programske podrške na PDH sustav. Predstavljeni su rezultati projekta i objašnjen je način upotrebe sustava, te su dane preporučene postavke za korištenje sustava.
+U ovom projektu opisan je razvoj programske podrške za 
+upravljanje kamerom i \textit{flash} memorijom nanosatelita 
+CubeSat u sklopu projekta FERSAT. Kratko su opisane i dosadašnje
+ aktivnosti u sklopu projekta FERSAT. Opisana je arhitektura korisnog
+ tereta FERSAT satelita i sklopovlje PDH sustava. 
+ Detaljno su objašnjeni I\textsuperscript{2}C, SPI i 
+ CAN protokoli i objašnjena je razlika između 
+ I\textsuperscript{2}C i SPI periferijskih sklopova prethodno 
+ korištenog (STM32F407VGT6) i trenutno korištenog (STM32L471VGT6) 
+ mikrokontrolera. Dan je pregled prilagodbe postojeće programske podrške na novi mikrokontroler i 
+ objašnjene su poteškoće do kojih je došlo kod prilagodbe. Objašnjen je način korištenja CAN periferije i dan je pregled 
+ funkcija koje će se koristiti za CAN komunikaciju. 
+ Programska potpora za upravljanje kamerom i 
+ \textit{flash} memorijom je integrirana u operacijski sustav 
+ za rad u stvarnom vremenu FreeRTOS. 
+ Predstavljeni su zadaci razvijeni u FreeRTOS operacijskom 
+ sustavu kojima se ostvaruje višezadaćnost PDH sustava i 
+ objašnjena je veza između zadataka. Objašnjen je način 
+ učitavanja razvijene programske podrške na PDH sustav. 
+ Predstavljeni su rezultati projekta i objašnjen je način 
+ upotrebe sustava, te su dane preporučene postavke za 
+ korištenje sustava.
 
-Razvijenu programsku podršku moguće je nadograditi i poboljšati. Za primjer se uzima brzina takta SPI komunikacije između. Trenutačne brzine takta su male (1.25 Mbit/s za kameru i 625 kbit/s za \textit{flash} memoriju) jer je kod većih brzina primijećeno izobličenje takta, što može stvarati probleme u komunikaciji. Moglo bi se iterativno povećavati brzina takta dok se ne dobije dovoljno velika brzina uz minimalno izobličenje signala takta.
+Razvijenu programsku podršku moguće je nadograditi i poboljšati. 
+Za primjer se uzima brzina takta SPI komunikacije između. % TODO tu nesto fali
+ Trenutačne brzine prijenosa su male (1.25 Mbit/s za kameru i 625 kbit/s za \textit{flash} memoriju) 
+ jer je kod većih brzina primijećeno izobličenje signala takta, što može stvarati probleme u komunikaciji. 
+U okviru budućeg rada moglo bi se ispitati ograničenja na maksimalnu 
+brzinu prijenosa sginala s kamere.
 
-Radi pogrešaka na tiskanoj pločici PDH sustava neke dijelove programske podrške nije bilo moguće razviti. Na primjer podsustav za CAN komunikaciju sadržava krivo spojene stezaljke za napajanje, a pogreške se nalaze i na samom podsustavu za napajanje PDH sustava, pa projekt u trenutačnom stanju ne može raditi bez osobnog računala i programatora. Kako bi se riješili ti problemi potrebno je napraviti novu ispravnu tiskanu pločicu, što je van okvira ovog projekta.
+Radi pogrešaka na tiskanoj pločici PDH sustava neke dijelove programske podrške nije bilo moguće razviti. 
+Primjerice, na podsustavu za CAN komunikaciju priključci
+za napajanje su pogrešno spojeni, a pogreške se nalaze 
+i na samom podsustavu za napajanje PDH sustava, 
+pa projekt u trenutačnom stanju ne može raditi bez 
+osobnog računala i programatora. 
+Kako bi se riješili ti problemi potrebno je napraviti novu 
+ispravnu tiskanu pločicu, što je van okvira ovog projekta.

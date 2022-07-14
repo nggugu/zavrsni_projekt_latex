@@ -66,7 +66,7 @@ void ACAM_spi_read_package(uint8_t * buff, uint16_t size);
 \noindent Kao što je već rečeno, SPI periferija funkcionira na isti način na oba mikrokontrolera, te stoga funkcije \verb|ACAM_SPI_Read()| i \verb|ACAM_SPI_Write()| funkcioniraju na isti način kao i u programskoj podršci za prethodni mikrokontroler.
 
 Do razlike, međutim, dolazi u funkciji \verb| ACAM_spi_read_package()|, jer ta funkcija koristi DMA prijenos, a kao što je već pokazano, DMA prijenos funkcionira drugačije na STM32L471VGT6 mikrokontroleru nego na STM32F407VGT6 mikrokontroleru. U prethodnoj programskoj podršci koristili su se takozvani tokovi kod DMA prijenosa. Na primjer, za slanje podataka preko SPI protokola pomoću DMA prijenosa koristio se tok 4, a u programskoj podršci tok 4 je označavala definicija \verb|LL_DMA_STREAM_4|. U programskoj podršci za trenutačni mikrokontroler ne postoje takve definicije za tokove, s obzirom na to da se prijenos obavlja preko takozvanih kanala. Ako se žele poslati podatci preko SPI protokola pomoću DMA prijenosa mora se koristiti kanal 5, a za primanje podataka koristi se kanal 4, a u programskoj podršci kanale 4 i 5 predstavljaju definicije \verb|LL_DMA_CHANNEL_4| i \verb|LL_DMA_CHANNEL5|. Navedene promjene bilo je jednostavno implementirati jer se koriste globalne definicije preko kojih se programskoj podršci govori koje dijelove periferije se koriste, tako da je bilo potrebno promijeniti svega nekoliko linija koda (isječak koda \ref{lst:global_dma_def}).
-\begin{lstlisting}[caption=Zaglavlje dma.h datoteke u kojima se definira koji dijelovi periferija se koriste, label={lst:global_dma_def}]
+\begin{lstlisting}[caption=Zaglavlje \texttt{dma.h} datoteke u kojima se definira koji dijelovi periferija se koriste, label={lst:global_dma_def}]
 #define ACAM_SPIn	SPI2
 
 #define ACAM_LL_DMA_CHANNEL_TX	LL_DMA_CHANNEL_5
@@ -161,13 +161,13 @@ Konfiguracija CAN periferije može se izvesti korištenjem generatora koda u \\S
 
 Generator koda ne nudi opciju konfiguracije filtra, pa stoga korisnik mora sam implementirati funkciju za konfiguraciju filtra \verb|HAL_CAN_ConfigFilter()|, čiji je prototip dan u isječku koda \ref{lst:filter_config_prototype}.
 
-\begin{lstlisting}[caption=Prototip funkcije HAL\_CAN\_ConfigFilter(), label={fig:filter_config_prototype}]
+\begin{lstlisting}[caption=Prototip funkcije \texttt{HAL\_CAN\_ConfigFilter()}, label={lst:filter_config_prototype}]
 HAL_StatusTypeDef HAL_CAN_ConfigFilter(CAN_HandleTypeDef *hcan, const CAN_FilterTypeDef *sFilterConfig)
 \end{lstlisting} 
 
 \noindent Funkcija prima pokazivač na strukturu \verb|*sFilterConfig|, koja sadržava željene parametre filtra. Kako bi se filter podesio, korisnik prvo treba napraviti strukturu tipa \verb|CAN_FilterTypeDef| koja sadržava sve potrebne parametre filtra (isječak koda \ref{lst:can_filtertypedef}).
 
-\begin{lstlisting}[caption=CAN\_FilterTypeDef struktura, label={lst:can_filtertypedef}]
+\begin{lstlisting}[caption=\texttt{CAN\_FilterTypeDef} struktura, label={lst:can_filtertypedef}]
 typedef struct
 {
   uint32_t StdId;
@@ -228,4 +228,4 @@ Programiranje se izvodi preko CN2 konektora na razvojnom sustavu i X6 konektora 
 		\label{Tab:conn_func}
 	\end{table}
 \end{center}
-Potrebno je spojiti istoimene stezaljke kako bi se učitavanje programa uspješno izvelo. Osim za programiranje, razvojni sustav se koristi kako bi PDH sustav imao napajanje, s obzirom na to da sustav napajanja na PDH sustavu trenutačno nije ispravno.
+Potrebno je spojiti istoimene stezaljke kako bi se učitavanje programa uspješno izvelo. Osim za programiranje, razvojni sustav se koristi kao izvor napajanja za PDH računalo, s obzirom na to da sustav napajanja na PDH sustavu trenutačno nije ispravan.
