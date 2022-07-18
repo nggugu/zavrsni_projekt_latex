@@ -16,7 +16,7 @@ Obje linije su pritegnute na visoku logičku razinu preko \textit{pull-up} otpor
 	\item do 100 kbit/s u \textit{Standard-mode} načinu rada, 
 	\item do 400 kbit/s u \textit{Fast-mode} načinu rada,
 	\item do 1 Mbit/s u \textit{Fast-mode Plus} načinu rada,
-	\item do 3.4 Mbit/s u \textit{High-speed} načinu rada.
+	\item do 3,4 Mbit/s u \textit{High-speed} načinu rada.
 \end{itemize}
 Navedene brzine se koriste kod dvosmjernog prijenosa, a moguća je i brzina do 5 Mbit/s u jednosmjernom prijenosu. Više uređaja se može spojiti na jednu sabirnicu, a svaki uređaj je prepoznatljiv po svojoj jedinstvenoj adresi i može se ponašati kao prijamnik ili odašiljač, ovisno o funkciji uređaja \cite{i2c_manual}. Protokol najčešće, a tako i u ovom slučaju, koristi 7-bitno adresiranje, a moguće je i korištenje 10-bitnog adresiranja. Osim konfiguracije prijamnika i odašiljača, uređaj također može biti \textit{master} uređaj ili \textit{slave} uređaj tijekom prijenosa podataka. \textit{Master} uređaj je uređaj koji inicijalizira prijenos podataka na sabirnici i generira signal takta kako bi omogućio prijenos. U tom trenutku, bilo koji uređaj koji je adresiran smatra se \textit{slave} uređajem.
 
@@ -93,7 +93,7 @@ Imajući na umu izgled adresnog bajta, vremenski dijagram tipčne I\textsuperscr
 
 \subsection{Razlika I\textsuperscript{2}C periferije na STM32L471VGT6 i \newline STM32F407VGT6 mikrokontrolerima}
 
-Tijekom prijenosa koda sa starog mikrokontrolera na novi, primjećeno je da postoji razlika između struktura I\textsuperscript{2}C periferija. Točnije, postoji razlika između registarskih mapa na dvama periferijama, koje su vidljive usporedbom tablica \ref{Tab:l471_i2c_register_map} i \ref{Tab:f407_i2c_register_map} (\textit{napomena}: u tablicama nisu prikazani svi registri, jer se neki registri niti ne koriste, ili se koriste samo tijekom konfiguracije periferija. Za puni prikaz tablica treba provijeriti dokumentacije mikrokontrolera \cite{f407_manual}, \citep{l471_manual}).
+Tijekom prijenosa koda sa starog mikrokontrolera na novi, primjećeno je da postoji razlika između struktura I\textsuperscript{2}C periferija. Točnije, postoji razlika između registarskih mapa na dvama periferijama, koje su vidljive usporedbom tablica \ref{Tab:l471_i2c_register_map} i \ref{Tab:f407_i2c_register_map} (\textit{napomena}: u tablicama nisu prikazani svi registri, jer se neki registri niti ne koriste, ili se koriste samo tijekom konfiguracije periferija). Za puni prikaz tablica treba provijeriti dokumentacije mikrokontrolera \cite{f407_manual}, \citep{l471_manual}.
 
 \begin{table}[H]
 	\caption{Registarska mapa I\textsuperscript{2}C periferije STM32L471VGT6 mikrokontrolera \cite{l471_manual}}
@@ -216,7 +216,7 @@ Tijekom svakog perioda takta obavlja se prijenos podataka u \textit{full-duplex}
 Prijenosi podataka uključuju dva posmačna registra zadane veličine, npr. 8 bitova, jedan u \textit{master} i drugi u \textit{slave} uređaju. Registri su spojeni u topologiji virtualnog prstena (slika \ref{fig:spi_circular_transfer}).
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=\textwidth]{SPI_8-bit_circular_transfer.svg.png}
+	\includegraphics[width=10 cm]{SPI_8-bit_circular_transfer.svg.png}
 	\caption{Tipičan spoj dvaju posmačna registra koji formiraju kružni međuspremnik \cite{spi_wikipedia}}
 	\label{fig:spi_circular_transfer}
 \end{figure}
@@ -477,7 +477,7 @@ Slika \ref{fig:can_arbitration} prikazuje proces arbitraže kojim CAN kontroler 
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=\textwidth]{can_arbitration.png}
+	\includegraphics[width=10 cm]{can_arbitration.png}
 	\caption{Arbitraža na CAN sabirnici \cite[str. 5]{can_manual}}
 	\label{fig:can_arbitration}
 \end{figure}
@@ -790,5 +790,5 @@ Valjan rub se definira kao prva promjena u vremenu bita iz dominantnog u recesiv
 		\hline
 	\end{tabular}%
 	}
-	\label{Tab:f407_dma_register_map_2}
+	\label{Tab:l471_can_register_map}
 \end{table}

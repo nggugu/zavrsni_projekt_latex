@@ -6,7 +6,7 @@ Prilikom razvoja programske podrške korišteno je integrirano razvojno okružen
 
 Razvojno okruženje STM32CubeIDE nudi mogućnost grafičkog podešavanja parametara periferija i automatsko generiranje koda, čime su olakšane inicijalizacije raznih perifernih sklopova. Prije generiranja koda moguće je odabrati hoće li se koristiti HAL \engl{Hardware Abstraction Layer} ili LL \engl{Low-Layer} biblioteke.
 
-HAL biblioteke nude visoku razinu abstrakcije i lakše su za koristiti, međutim, one rade po principu ,,crne kutije'', te ih stoga korisnik teže razumije. HAL biblioteke također zauzimaju više radne memorije od LL biblioteka jer u sebi sadržavaju kojekakve provjere vrijednosti i modifikacije unutarnjih HAL struktura, pa time nisu osigurane optimalne performanse.
+HAL biblioteke nude visoku razinu abstrakcije i lakše su za koristiti, međutim, one rade prema načelu ,,crne kutije'', te ih stoga korisnik teže razumije. HAL biblioteke također zauzimaju više radne memorije od LL biblioteka jer u sebi sadržavaju razne provjere vrijednosti i modifikacije unutarnjih HAL struktura, pa time nisu osigurane optimalne performanse.
 
 Iz tog razloga odlučeno je da će se koristiti LL biblioteke. LL biblioteke omogućuju izravan pristup registrima periferija i korisnik ih daleko jednostavnije razumije, s obzirom na to da se često sastoje od samo jedne linije koda.
 
@@ -14,6 +14,7 @@ Iz tog razloga odlučeno je da će se koristiti LL biblioteke. LL biblioteke omo
 
 Za rad s kamerom razvijene su korisničke funkcije prikazane u isječku koda \ref{lst:arducam_code}.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption=Korisničke funkcije za Arducam 5MP Mini Plus, label={lst:arducam_code}]
 uint8_t ACAM_TestComms(void);
 uint8_t ACAM_SPI_Read(uint8_t reg);
@@ -35,8 +36,9 @@ void ACAM_exp_gain_auto(void)
 uint8_t ACAM_is_cap_complete(void)
 void ACAM_set_gain(uint8_t gain);
 \end{lstlisting}
+\end{minipage}
 
-\noindent Za testiranje SPI i I\textsuperscript{2}C komunikacije između mikrokontrolera i kamere postoji funkcija \verb|ACAM_TestComms()|, za odabir između RAW i JPEG formata slike na raspolaganju su funkcije \verb|ACAM_select_RAW()| i \verb|ACAM_select_JPEG()|. Način upravljanja ekspozicijom odabire se funkcijama \verb|ACAM_exp_gain_manual()| i \\ \verb|ACAM_exp_gain_auto()|, a ukoliko se odabere ručni način upravljanja ekspozicijom parametri vremena ekspozicije i pojačanja pojačala se podešavaju funkcijama \verb|ACAM_set_exposure()| i \verb|ACAM_set_gain()|. Komanda za početak slikanja se šalje funkcijom \\ \verb|ACAM_start_capture()|, a provjera završetka slikanja se obavlja funkcijom \\ \verb|ACAM_is_cap_complete()|. Navedene funkcije nije trebalo mijenjati u odnosu na prethodnu programsku podršku, pa one rade na isti način kao i u prethodnom radu \cite{diplomski_goran_petrak}. Funkcije koje direktno rade sa SPI i I\textsuperscript{2}C periferijom su jedine mijenjane s obzirom na to da se rad periferija između prethodno korištenog i trenutačno korištenog mikrokontrolera razlikuju, kako je i pokazano u poglavlju 3. U nastavku će biti istaknute razlike između starih i novih funkcija kao i obrazloženje radi čega je došlo do promjena.
+\noindent Za testiranje SPI i I\textsuperscript{2}C komunikacije između mikrokontrolera i kamere postoji funkcija \verb|ACAM_TestComms()|, za odabir između RAW i JPEG formata slike na raspolaganju su funkcije \verb|ACAM_select_RAW()| i \verb|ACAM_select_JPEG()|. Način upravljanja ekspozicijom odabire se funkcijama \verb|ACAM_exp_gain_manual()| i \\ \verb|ACAM_exp_gain_auto()|, a ukoliko se odabere ručni način upravljanja ekspozicijom parametri vremena ekspozicije i pojačanja pojačala se podešavaju funkcijama \verb|ACAM_set_exposure()| i \verb|ACAM_set_gain()|. Komanda za početak slikanja se šalje funkcijom \verb|ACAM_start_capture()|, a provjera završetka slikanja se obavlja funkcijom \verb|ACAM_is_cap_complete()|. Navedene funkcije nije trebalo mijenjati u odnosu na prethodnu programsku podršku, pa one rade na isti način kao i u prethodnom radu \cite{diplomski_goran_petrak}. Funkcije koje direktno rade sa SPI i I\textsuperscript{2}C periferijom su jedine mijenjane s obzirom na to da se rad periferija između prethodno korištenog i trenutačno korištenog mikrokontrolera razlikuju, kako je i pokazano u poglavlju 3. U nastavku će biti istaknute razlike između starih i novih funkcija kao i obrazloženje radi čega je došlo do promjena.
 
 \subsection{Funkcije za rad sa I\textsuperscript{2}C periferijom}
 
@@ -146,7 +148,7 @@ Prikaz zadataka u obliku blok dijagrama prikazan je na slici \ref{fig:tasks}.
 
 S obzirom na neispravnost sklopa za CAN komunikaciju na tiskanoj pločici PDH sustava, programska podrška za CAN sučelje nije razvijena. Ipak, u ovom poglavlju dat će se pregled funkcija koje će se najčešće koristiti jednom kada se programska podrška počne razvijati. Za razliku od ostalih sučelja na STM32L471VGT6 mikrokontroleru ne postoje LL biblioteke koje rukuju CAN periferijom, pa će se stoga koristiti HAL biblioteke.
 
-\subsection{Inicijalizacija}
+\subsection{Inicijalizacija CAN sučelja}
 
 Konfiguracija CAN periferije može se izvesti korištenjem generatora koda u \\STM32CubeIDE razvojnom okruženju, a prikaz osnovne konfiguracije prikazan je na slici \ref{fig:can_config}.
 
@@ -182,7 +184,7 @@ typedef struct
 
 \noindent Kada se napravi inicijalizacija, CAN modul se uključuje \verb|HAL_CAN_Start()| funkcijom. Čvor je sada aktivan na sabirnici i može primati i slati poruke.
 
-\subsection{Korištenje}
+\subsection{Korištenje CAN sučelja}
 
 Slanjem poruka se upravlja sljedećim funkcijama:
 \begin{itemize}
